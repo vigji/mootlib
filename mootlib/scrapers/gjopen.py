@@ -13,7 +13,7 @@ import time
 from tqdm import tqdm
 import aiohttp
 
-from common_markets import PooledMarket, BaseMarket, BaseScraper
+from mootlib.scrapers.common_markets import PooledMarket, BaseMarket, BaseScraper
 
 BASE_URL = "https://www.gjopen.com"
 QUESTIONS_URL = f"{BASE_URL}/questions"

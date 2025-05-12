@@ -21,7 +21,7 @@ from typing import List, Optional, Any, Dict
 from dataclasses import dataclass
 import aiohttp
 
-from common_markets import PooledMarket, BaseMarket, BaseScraper
+from mootlib.scrapers.common_markets import PooledMarket, BaseMarket, BaseScraper
 
 # Load environment variables if .env file exists
 dotenv.load_dotenv()

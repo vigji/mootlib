@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from abc import ABC, abstractmethod
 import pandas as pd
 from tqdm import tqdm
-from common_markets import PooledMarket, BaseMarket, BaseScraper
+from mootlib.scrapers.common_markets import PooledMarket, BaseMarket, BaseScraper
 
 
 @dataclass

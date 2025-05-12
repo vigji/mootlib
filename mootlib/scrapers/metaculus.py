@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import List, Optional, Any
 
 from forecasting_tools import MetaculusApi, ApiFilter, MetaculusQuestion
-from common_markets import PooledMarket, BaseMarket, BaseScraper
+from mootlib.scrapers.common_markets import PooledMarket, BaseMarket, BaseScraper
 
 start_date = datetime(2024, 10, 1)
 one_year_from_now = datetime.now() + timedelta(days=365)
