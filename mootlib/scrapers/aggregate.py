@@ -1,17 +1,18 @@
 import asyncio
-import pandas as pd
-from pathlib import Path
-from typing import List, Dict, Any
-import time
 import json
+import time
 from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List
+
+import pandas as pd
 
 from mootlib.scrapers.common_markets import PooledMarket
 from mootlib.scrapers.gjopen import GoodJudgmentOpenScraper
 from mootlib.scrapers.manifold import ManifoldScraper
+from mootlib.scrapers.metaculus import MetaculusScraper
 from mootlib.scrapers.polygamma import PolymarketGammaScraper
 from mootlib.scrapers.predictit import PredictItScraper
-from mootlib.scrapers.metaculus import MetaculusScraper
 
 
 def save_markets_to_cache(markets: List[PooledMarket], platform: str) -> Path:

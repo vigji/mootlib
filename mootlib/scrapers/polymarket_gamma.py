@@ -1,27 +1,28 @@
 # %%
 
+import json
 import os
-import dotenv
+import time
+from dataclasses import dataclass
+from datetime import datetime  # , timedelta # timedelta not used
+
+# import numpy as np # Not explicitly used
+# from openai import OpenAI # Not used
+from functools import lru_cache
 from pathlib import Path
+from pprint import pprint
+from typing import Any, Dict, List, Optional
+
+import aiohttp
+import dotenv
+import pandas as pd
 
 # from py_clob_client.client import ClobClient, TradeParams # Not used in this version
 # from py_clob_client.constants import POLYGON # Not used in this version
 import requests
 from tqdm import tqdm
-from pprint import pprint
-import pandas as pd
 
-# import numpy as np # Not explicitly used
-# from openai import OpenAI # Not used
-from functools import lru_cache
-from datetime import datetime  # , timedelta # timedelta not used
-import time
-import json
-from typing import List, Optional, Any, Dict
-from dataclasses import dataclass
-import aiohttp
-
-from mootlib.scrapers.common_markets import PooledMarket, BaseMarket, BaseScraper
+from mootlib.scrapers.common_markets import BaseMarket, BaseScraper, PooledMarket
 
 # Load environment variables if .env file exists
 dotenv.load_dotenv()

@@ -1,1 +1,1 @@
-"""Test suite for mootlib.""" 
+"""Test suite for mootlib."""

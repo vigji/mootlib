@@ -1,13 +1,15 @@
-from pathlib import Path
-import aiohttp
 import asyncio
-from typing import List, Dict, Any, Optional, Union
-from datetime import datetime
-from dataclasses import dataclass
 from abc import ABC, abstractmethod
+from dataclasses import dataclass
+from datetime import datetime
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Union
+
+import aiohttp
 import pandas as pd
 from tqdm import tqdm
-from mootlib.scrapers.common_markets import PooledMarket, BaseMarket, BaseScraper
+
+from mootlib.scrapers.common_markets import BaseMarket, BaseScraper, PooledMarket
 
 
 @dataclass
@@ -313,8 +315,8 @@ class ManifoldScraper(BaseScraper):
 
 
 async def main():
-    from pprint import pprint
     import time
+    from pprint import pprint
 
     print("Starting ManifoldScraper example...")
     start_time = time.time()

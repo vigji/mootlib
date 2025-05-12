@@ -1,11 +1,12 @@
-from datetime import datetime, timedelta
 import asyncio
-import pandas as pd
 from dataclasses import dataclass
-from typing import List, Optional, Any
+from datetime import datetime, timedelta
+from typing import Any, List, Optional
 
-from forecasting_tools import MetaculusApi, ApiFilter, MetaculusQuestion
-from mootlib.scrapers.common_markets import PooledMarket, BaseMarket, BaseScraper
+import pandas as pd
+from forecasting_tools import ApiFilter, MetaculusApi, MetaculusQuestion
+
+from mootlib.scrapers.common_markets import BaseMarket, BaseScraper, PooledMarket
 
 start_date = datetime(2024, 10, 1)
 one_year_from_now = datetime.now() + timedelta(days=365)

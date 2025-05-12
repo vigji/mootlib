@@ -1,12 +1,13 @@
+import hashlib
 import os
-from openai import OpenAI
-import dotenv
 from pathlib import Path
+
+import dotenv
 import numpy as np
 import pandas as pd
-import hashlib
-from tqdm import tqdm
+from openai import OpenAI
 from sklearn.metrics.pairwise import cosine_similarity
+from tqdm import tqdm
 
 model = "BAAI/bge-m3"
 

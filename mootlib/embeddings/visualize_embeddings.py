@@ -1,8 +1,9 @@
-import pandas as pd
+from pathlib import Path
+
 import numpy as np
+import pandas as pd
 import plotly.express as px
 from umap import UMAP
-from pathlib import Path
 
 
 def combine_embeddings(meta_embeddings_df, poly_embeddings_df):

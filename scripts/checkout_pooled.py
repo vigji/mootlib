@@ -1,11 +1,11 @@
 # %%
 
 from pathlib import Path
-import pandas as pd
-from matplotlib import pyplot as plt
-import numpy as np
-from embedding_utils import embed_questions_df
 
+import numpy as np
+import pandas as pd
+from embedding_utils import embed_questions_df
+from matplotlib import pyplot as plt
 
 df_file = Path("/Users/vigji/code/vigjibot/data/combined_markets.csv")
 pooled_df = pd.read_csv(df_file)
@@ -48,9 +48,10 @@ for i in [0, 2] + list(np.random.randint(0, len(embedded_df), 10)):
     print(example.question, example.source_platform)
     print(example.closest_questions_text)
     print("-" * 100)
+import plotly.express as px
+
 # %%
 from sklearn.manifold import TSNE
-import plotly.express as px
 from sklearn.metrics.pairwise import cosine_similarity
 
 

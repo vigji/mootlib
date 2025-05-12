@@ -1,19 +1,25 @@
+import json
+import os
+import re
+import time
+from dataclasses import dataclass
+from pathlib import Path
+from pprint import pprint
+from typing import Any, List, Optional
+from urllib.parse import urljoin
+
+import aiohttp
+import pandas as pd
 import requests
 from bs4 import BeautifulSoup
-from pprint import pprint
-from pathlib import Path
-import json
-import re
-from urllib.parse import urljoin
-from dataclasses import dataclass
-from typing import List, Optional, Any
-import os
-import pandas as pd
-import time
 from tqdm import tqdm
-import aiohttp
 
-from mootlib.scrapers.common_markets import PooledMarket, BaseMarket, BaseScraper, MarketFilter
+from mootlib.scrapers.common_markets import (
+    BaseMarket,
+    BaseScraper,
+    MarketFilter,
+    PooledMarket,
+)
 
 VALID_MARKETS_FILTER = MarketFilter(min_n_forecasters=40)
 
@@ -194,8 +200,10 @@ class GoodJudgmentOpenScraper(BaseScraper):
         if page is None:
             url = f"{self.QUESTIONS_URL}?sort=predictors_count&sort_dir=desc"
         else:
-            url = f"{self.QUESTIONS_URL}?sort=predictors_count&sort_dir=desc&page={page}"
-        
+            url = (
+                f"{self.QUESTIONS_URL}?sort=predictors_count&sort_dir=desc&page={page}"
+            )
+
         try:
             async with self.session.get(url, timeout=10) as response:
                 response.raise_for_status()
@@ -247,7 +255,10 @@ class GoodJudgmentOpenScraper(BaseScraper):
         return None
 
     async def fetch_markets(
-        self, only_open: bool = True, min_n_forecasters: int = VALID_MARKETS_FILTER.min_n_forecasters, **kwargs: Any
+        self,
+        only_open: bool = True,
+        min_n_forecasters: int = VALID_MARKETS_FILTER.min_n_forecasters,
+        **kwargs: Any,
     ) -> List[GJOpenMarket]:
         """
         Fetches markets from Good Judgment Open.
@@ -276,7 +287,9 @@ class GoodJudgmentOpenScraper(BaseScraper):
             for i, link in enumerate(question_links):
                 try:
                     market_obj = await self._fetch_market_data_for_url(link)
-                    if market_obj and market_obj.question not in [m.question for m in all_markets_data]:
+                    if market_obj and market_obj.question not in [
+                        m.question for m in all_markets_data
+                    ]:
                         # If only_open is True, we ideally would filter here if market_obj had resolution status.
                         # For now, all fetched markets are added, and filtering happens later if PooledMarket has status.
                         market_objs_on_page.append(market_obj)

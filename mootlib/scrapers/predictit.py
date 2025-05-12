@@ -1,17 +1,18 @@
+import asyncio
+import time
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import List, Dict, Any, Optional
+from pprint import pprint  # For main example
+from typing import Any, Dict, List, Optional
+
+import aiohttp
 
 # from pathlib import Path # Not used
 # import json # Not used
 import pandas as pd  # For main example, not core logic
-from pprint import pprint  # For main example
 import requests  # For the scraper
-import time
-import asyncio
-import aiohttp
 
-from mootlib.scrapers.common_markets import PooledMarket, BaseMarket, BaseScraper
+from mootlib.scrapers.common_markets import BaseMarket, BaseScraper, PooledMarket
 
 
 @dataclass
