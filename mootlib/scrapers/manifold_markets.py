@@ -6,8 +6,10 @@ from typing import Any
 import aiohttp
 from tqdm import tqdm
 
-from mootlib.scrapers.common_markets import BaseScraper, PooledMarket
+from mootlib.scrapers.common_markets import BaseScraper, PooledMarket, MarketFilter
 
+
+DEFAULT_MARKET_FILTER = MarketFilter(min_n_forecasters=50)
 
 @dataclass
 class ManifoldAnswer:
@@ -176,6 +178,10 @@ class ManifoldMarket:
 class ManifoldScraper(BaseScraper):
     """Scraper for Manifold markets."""
 
+    LIMIT = 1000
+    BASE_URL = "https://api.manifold.markets/v0/markets"
+    BASE_URL_MARKET_DETAILS = "https://api.manifold.markets/v0/market"
+
     def __init__(self, max_concurrent: int = 5, api_key: str | None = None) -> None:
         self.max_concurrent = max_concurrent
         self.session: aiohttp.ClientSession | None = None
@@ -202,16 +208,14 @@ class ManifoldScraper(BaseScraper):
 
     async def _fetch_raw_markets_list(
         self,
-        limit: int = 1000,
         before: str | None = None,
         only_open: bool = True,
     ) -> list[dict[str, Any]]:
         """Fetch a list of markets from API, with optional pagination and open status
         filter.
         """
-        base_url = "https://api.manifold.markets/v0/markets"
         params: dict[str, Any] = {
-            "limit": limit,
+            "limit": self.LIMIT,
             "sort": "created-time",
             "order": "desc",
         }
@@ -221,7 +225,7 @@ class ManifoldScraper(BaseScraper):
         all_markets_batch = []
         try:
             async with self.session.get(
-                base_url,
+                self.BASE_URL,
                 params=params,
                 headers=self.headers,
             ) as response:
@@ -245,7 +249,7 @@ class ManifoldScraper(BaseScraper):
         """Fetch details for a specific market."""
         # Ensure we use the original ID for the API call
         original_id = market_id.replace("manifold_", "")
-        base_url = f"https://api.manifold.markets/v0/market/{original_id}"
+        base_url = f"{self.BASE_URL_MARKET_DETAILS}/{original_id}"
         try:
             async with self.session.get(base_url, headers=self.headers) as response:
                 response.raise_for_status()
@@ -256,8 +260,8 @@ class ManifoldScraper(BaseScraper):
     async def fetch_markets(
         self,
         only_open: bool = True,
-        min_unique_bettors: int = 50,
-        min_volume: float = 0,
+        min_unique_bettors: int = DEFAULT_MARKET_FILTER.min_n_forecasters,
+        min_volume: float = DEFAULT_MARKET_FILTER.min_volume,
         **kwargs: Any,
     ) -> list[ManifoldMarket]:
         """Get filtered markets that meet the criteria."""

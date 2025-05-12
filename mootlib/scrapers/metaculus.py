@@ -6,15 +6,19 @@ from typing import Any
 import pandas as pd
 from forecasting_tools import ApiFilter, MetaculusApi, MetaculusQuestion
 
-from mootlib.scrapers.common_markets import BaseMarket, BaseScraper, PooledMarket
+from mootlib.scrapers.common_markets import BaseMarket, BaseScraper, PooledMarket, MarketFilter
 
 start_date = datetime(2024, 10, 1)
 one_year_from_now = datetime.now() + timedelta(days=365)
 
+DEFAULT_MARKET_FILTER = MarketFilter(
+    min_n_forecasters=40,
+)
+
 DEFAULT_FILTER = ApiFilter(
     allowed_statuses=["open"],
     allowed_types=["binary"],
-    num_forecasters_gte=40,
+    num_forecasters_gte=DEFAULT_MARKET_FILTER.min_n_forecasters,
     scheduled_resolve_time_lt=one_year_from_now,
     includes_bots_in_aggregates=False,
     community_prediction_exists=True,

@@ -8,9 +8,9 @@ from typing import Any
 class MarketFilter:
     """Dataclass for filtering markets."""
 
-    min_n_forecasters: int | None = None
-    min_comments_count: int | None = None
-    min_volume: float | None = None
+    min_n_forecasters: int = 0
+    min_comments_count: int = 0
+    min_volume: float = 0.
     only_open: bool = True
 
 

@@ -54,19 +54,12 @@ class PredictItMarket(BaseMarket):
     outcomes: list[str] = field(init=False)
     outcome_prices: list[float | None] = field(init=False)
     formatted_outcomes: str = field(init=False)
-    # total_liquidity: Optional[float] = field(init=False) # Optional,
-    # depends on contract liquidity def
-    # avg_spread: Optional[float] = field(init=False) # Optional
-    # volume: Optional[float] = None # If available from API
-    # (usually not in 'all' endpoint directly for market)
-    # n_forecasters: Optional[int] = None # If available from API
 
     def __post_init__(self):
         # This logic was part of from_api_data, moved to post_init for clarity
         if len(self.contracts) == 1:  # Binary market (Yes/No for a single statement)
             contract = self.contracts[0]
             self.outcomes = ["Yes", "No"]  # Assuming standard binary interpretation
-            # Probabilities must sum to 1. PredictIt price is for "Yes".
             yes_price = (
                 contract.last_trade_price
                 if contract.last_trade_price is not None
