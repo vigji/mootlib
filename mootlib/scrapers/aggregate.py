@@ -8,7 +8,7 @@ import pandas as pd
 
 from mootlib.scrapers.common_markets import PooledMarket
 from mootlib.scrapers.gjopen import GoodJudgmentOpenScraper
-from mootlib.scrapers.manifold import ManifoldScraper
+from mootlib.scrapers.manifold_markets import ManifoldScraper
 from mootlib.scrapers.metaculus import MetaculusScraper
 from mootlib.scrapers.polymarket_gamma import PolymarketGammaScraper
 from mootlib.scrapers.predictit import PredictItScraper
