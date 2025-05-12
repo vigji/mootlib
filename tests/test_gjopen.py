@@ -1,6 +1,6 @@
 import pytest
 
-from mootlib.scrapers.gjopen import GJOpenAnswer, GJOpenMarket, GoodJudgmentOpenScraper
+from mootlib.scrapers.gjopen import GJOpenAnswer, GJOpenMarket
 
 
 @pytest.mark.asyncio

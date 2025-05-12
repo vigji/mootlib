@@ -1,14 +1,14 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
-from typing import Any, List, Optional
+from datetime import UTC, datetime
+from typing import Any
 
 
 @dataclass
 class MarketFilter:
-    min_n_forecasters: Optional[int] = None
-    min_comments_count: Optional[int] = None
-    min_volume: Optional[float] = None
+    min_n_forecasters: int | None = None
+    min_comments_count: int | None = None
+    min_volume: float | None = None
     only_open: bool = True
 
 
@@ -16,34 +16,22 @@ class MarketFilter:
 class PooledMarket:
     id: str  # Platform-prefixed ID, e.g., "gjopen_123", "polymarket_abc"
     question: str
-    outcomes: List[
-        str
-    ]  # List of outcome names, e.g., ["Yes", "No"] or ["Candidate A", "Candidate B"]
-    outcome_probabilities: List[
-        Optional[float]
-    ]  # Corresponding probabilities for outcomes
-    formatted_outcomes: (
-        str  # Single string representation, e.g., "Yes: 60.0%; No: 40.0%"
-    )
+    outcomes: list[str]  # ["Yes", "No"] or ["A", "B", "C"...]
+    outcome_probabilities: list[float | None]  # Corresponding probs for outcomes
+    formatted_outcomes: str  # e.g., "Yes: 60.0%; No: 40.0%"
     url: str  # Direct URL to the market
-    published_at: Optional[
-        datetime
-    ]  # Publication/creation time of the market (UTC if possible)
+    published_at: datetime | None  # Publication/creation time (UTC if possible)
     source_platform: str  # Name of the source platform, e.g., "GJOpen", "Polymarket"
 
     # Optional fields, common across platforms
-    volume: Optional[float] = None  # Trading volume
-    n_forecasters: Optional[int] = None  # Number of unique predictors/bettors
-    comments_count: Optional[int] = None
-    original_market_type: Optional[str] = (
-        None  # Platform-specific type, e.g., "BINARY", "MULTIPLE_CHOICE"
-    )
-    is_resolved: Optional[bool] = (
-        None  # True if the market is resolved/closed, False if open, None if unknown
-    )
+    volume: float | None = None  # Trading volume
+    n_forecasters: int | None = None  # Number of unique predictors/bettors
+    comments_count: int | None = None
+    original_market_type: str | None = None  # e.g., "BINARY", "MULTIPLE_CHOICE"
+    is_resolved: bool | None = None  # True if market is resolved
 
-    # To store the original market object for further details if needed, not part of repr
-    raw_market_data: Optional[Any] = field(default=None, repr=False, compare=False)
+    # To store the original market object for further details if needed
+    raw_market_data: Any | None = field(default=None, repr=False, compare=False)
 
 
 class BaseMarket(ABC):
@@ -60,7 +48,7 @@ class BaseMarket(ABC):
         pass
 
     @classmethod
-    def parse_datetime_flexible(cls, dt_str: Optional[str]) -> Optional[datetime]:
+    def parse_datetime_flexible(cls, dt_str: str | None) -> datetime | None:
         if not dt_str:
             return None
 
@@ -69,7 +57,6 @@ class BaseMarket(ABC):
             return dt_str
 
         if not isinstance(dt_str, str):
-            # print(f"Warning: Expected string for datetime parsing, got {type(dt_str)}")
             return None
 
         try:
@@ -82,7 +69,7 @@ class BaseMarket(ABC):
                     dt_obj = datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%S.%fZ")
                 else:
                     dt_obj = datetime.strptime(dt_str, "%Y-%m-%dT%H:%M:%SZ")
-                return dt_obj.replace(tzinfo=timezone.utc)
+                return dt_obj.replace(tzinfo=UTC)
             # Handle timezone-aware strings with offset
             elif (
                 "+" in dt_str[10:] or "-" in dt_str[10:]
@@ -90,9 +77,11 @@ class BaseMarket(ABC):
                 return datetime.fromisoformat(dt_str)
             # Handle naive datetime strings
             else:
-                # Try ISO format for naive datetime (e.g. fromisoformat handles '2023-10-26T00:00:00')
+                # Try ISO format for naive datetime (e.g. fromisoformat handles
+                # '2023-10-26T00:00:00')
                 dt_obj = datetime.fromisoformat(dt_str)
-                # If it was truly naive, it remains naive. If it needs to be UTC, caller should specify.
+                # If it was truly naive, it remains naive.
+                # If it needs to be UTC, caller should specify.
                 return dt_obj
         except ValueError:
             # Fallback for other common formats if needed
@@ -110,7 +99,7 @@ class BaseScraper(ABC):
     """
 
     @abstractmethod
-    async def fetch_markets(self, only_open: bool = True, **kwargs) -> List[Any]:
+    async def fetch_markets(self, only_open: bool = True, **kwargs) -> list[Any]:
         """
         Fetches markets from the specific platform.
 
@@ -125,7 +114,7 @@ class BaseScraper(ABC):
 
     async def get_pooled_markets(
         self, only_open: bool = True, **kwargs
-    ) -> List[PooledMarket]:
+    ) -> list[PooledMarket]:
         """
         Fetches markets and converts them to the PooledMarket format.
 
@@ -149,11 +138,13 @@ class BaseScraper(ABC):
                 except Exception as e:
                     market_id = getattr(market, "id", "unknown_id")
                     print(
-                        f"Warning: Could not convert market {market_id} to PooledMarket: {e}"
+                        f"Warning: Could not convert market {market_id} to"
+                        f"PooledMarket: {e}"
                     )
             else:
                 market_id = getattr(market, "id", "unknown_id")
                 print(
-                    f"Warning: Market object {market_id} of type {type(market)} does not have a to_pooled_market method."
+                    f"Warning: Market object {market_id} of type {type(market)}"
+                    f" does not have a to_pooled_market method."
                 )
         return pooled_markets

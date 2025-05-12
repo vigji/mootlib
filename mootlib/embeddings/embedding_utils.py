@@ -117,7 +117,7 @@ def get_closest_questions(row, distance_matrix, df, n_closest=20):
             closest_questions["question"].tolist(),
             closest_questions["formatted_outcomes"].tolist(),
             closest_questions["source_platform"].tolist(),
-            distances[closest_indices],
+            distances[closest_indices], strict=False,
         )
         if source != "Metaculus"
     ]

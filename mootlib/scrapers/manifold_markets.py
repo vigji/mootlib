@@ -1,15 +1,12 @@
 import asyncio
-from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Optional
 
 import aiohttp
-import pandas as pd
 from tqdm import tqdm
 
-from mootlib.scrapers.common_markets import BaseMarket, BaseScraper, PooledMarket
+from mootlib.scrapers.common_markets import BaseScraper, PooledMarket
 
 
 @dataclass
@@ -21,7 +18,7 @@ class ManifoldAnswer:
     created_time: datetime
 
     @classmethod
-    def from_api_data(cls, data: Dict[str, Any]) -> "ManifoldAnswer":
+    def from_api_data(cls, data: dict[str, Any]) -> "ManifoldAnswer":
         return cls(
             text=data["text"],
             probability=data.get("probability", 0),
@@ -45,24 +42,24 @@ class ManifoldMarket:
     volume: float
     unique_bettor_count: int
     total_liquidity: float
-    close_time: Optional[datetime]
+    close_time: datetime | None
     last_updated_time: datetime
-    tags: List[str]
-    group_slugs: List[str]
+    tags: list[str]
+    group_slugs: list[str]
     visibility: str
-    resolution: Optional[str]
-    resolution_time: Optional[datetime]
-    outcomes: List[str]
-    outcome_prices: List[float]
+    resolution: str | None
+    resolution_time: datetime | None
+    outcomes: list[str]
+    outcome_prices: list[float]
     formatted_outcomes: str
     # Binary specific
-    probability: Optional[float] = None
-    initial_probability: Optional[float] = None
-    p: Optional[float] = None
-    total_shares: Optional[float] = None
-    pool: Optional[float] = None
+    probability: float | None = None
+    initial_probability: float | None = None
+    p: float | None = None
+    total_shares: float | None = None
+    pool: float | None = None
     # Multi-choice specific
-    answers: Optional[List[ManifoldAnswer]] = None
+    answers: list[ManifoldAnswer] | None = None
 
     def get_url(self) -> str:
         return f"https://manifold.markets/{self.creator_username}/{self.slug}"
@@ -71,12 +68,13 @@ class ManifoldMarket:
         return f"{self.question} ({self.outcome_type})"
 
     @staticmethod
-    def _format_outcomes(outcomes: List[str], prices: List[float]) -> str:
+    def _format_outcomes(outcomes: list[str], prices: list[float]) -> str:
         """Format outcomes and prices into a string"""
-        return "; ".join([f"{o}: {(p * 100):.1f}%" for o, p in zip(outcomes, prices)])
+        return "; ".join([f"{o}: {(p * 100):.1f}%"
+                          for o, p in zip(outcomes, prices, strict=False)])
 
     @classmethod
-    def from_api_data(cls, data: Dict[str, Any]) -> Optional["ManifoldMarket"]:
+    def from_api_data(cls, data: dict[str, Any]) -> Optional["ManifoldMarket"]:
         outcome_type = data["outcomeType"]
 
         outcomes = []
@@ -169,9 +167,9 @@ class ManifoldMarket:
 
 
 class ManifoldScraper(BaseScraper):
-    def __init__(self, max_concurrent: int = 5, api_key: Optional[str] = None):
+    def __init__(self, max_concurrent: int = 5, api_key: str | None = None):
         self.max_concurrent = max_concurrent
-        self.session: Optional[aiohttp.ClientSession] = None
+        self.session: aiohttp.ClientSession | None = None
         self.api_key = api_key
         self.headers = {}
         if self.api_key:
@@ -186,7 +184,7 @@ class ManifoldScraper(BaseScraper):
             await self.session.close()
 
     @staticmethod
-    def _create_market(data: Dict[str, Any]) -> Optional[ManifoldMarket]:
+    def _create_market(data: dict[str, Any]) -> ManifoldMarket | None:
         """Create appropriate market type from API data."""
         try:
             return ManifoldMarket.from_api_data(data)
@@ -195,11 +193,12 @@ class ManifoldScraper(BaseScraper):
             return None
 
     async def _fetch_raw_markets_list(
-        self, limit: int = 1000, before: Optional[str] = None, only_open: bool = True
-    ) -> List[Dict[str, Any]]:
-        """Fetch a list of markets from API, with optional pagination and open status filter."""
+        self, limit: int = 1000, before: str | None = None, only_open: bool = True
+    ) -> list[dict[str, Any]]:
+        """Fetch a list of markets from API, with optional pagination and open status
+        filter."""
         base_url = "https://api.manifold.markets/v0/markets"
-        params: Dict[str, Any] = {
+        params: dict[str, Any] = {
             "limit": limit,
             "sort": "created-time",
             "order": "desc",
@@ -229,7 +228,7 @@ class ManifoldScraper(BaseScraper):
             return []
         return all_markets_batch
 
-    async def _get_market_details(self, market_id: str) -> Optional[Dict[str, Any]]:
+    async def _get_market_details(self, market_id: str) -> dict[str, Any] | None:
         """Fetch details for a specific market."""
         # Ensure we use the original ID for the API call
         original_id = market_id.replace("manifold_", "")
@@ -240,7 +239,8 @@ class ManifoldScraper(BaseScraper):
                 return await response.json()
         except aiohttp.ClientError as e:
             print(
-                f"Error fetching details for market {market_id} (original_id: {original_id}): {e}"
+                f"Error fetching details for market {market_id}"
+                f" (original_id: {original_id}): {e}"
             )
             return None
 
@@ -250,16 +250,16 @@ class ManifoldScraper(BaseScraper):
         min_unique_bettors: int = 50,
         min_volume: float = 0,
         **kwargs: Any,
-    ) -> List[ManifoldMarket]:
+    ) -> list[ManifoldMarket]:
         """Get filtered markets that meet the criteria."""
         if not self.session or self.session.closed:
             self.session = aiohttp.ClientSession(headers=self.headers)
 
-        raw_markets_list_paginated: List[Dict[str, Any]] = []
-        last_market_id: Optional[str] = None
+        raw_markets_list_paginated: list[dict[str, Any]] = []
+        last_market_id: str | None = None
         markets_fetched_count = 0
 
-        print(f"Fetching Manifold markets")
+        print("Fetching Manifold markets")
 
         while True:
             current_batch = await self._fetch_raw_markets_list(
@@ -274,7 +274,7 @@ class ManifoldScraper(BaseScraper):
         if not raw_markets_list_paginated:
             return []
 
-        markets_to_fetch_details_for_ids: List[str] = []
+        markets_to_fetch_details_for_ids: list[str] = []
         for m_summary in raw_markets_list_paginated:
             if only_open and m_summary.get("isResolved", False):
                 continue
@@ -286,7 +286,7 @@ class ManifoldScraper(BaseScraper):
                 continue
             markets_to_fetch_details_for_ids.append(m_summary["id"])
 
-        processed_markets: List[ManifoldMarket] = []
+        processed_markets: list[ManifoldMarket] = []
         for i in tqdm(
             range(0, len(markets_to_fetch_details_for_ids), self.max_concurrent),
             desc="Fetching Manifold market details",
@@ -295,7 +295,8 @@ class ManifoldScraper(BaseScraper):
             tasks = [self._get_market_details(market_id) for market_id in batch_ids]
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
-            for market_id_original, full_data_or_exc in zip(batch_ids, results):
+            for _market_id_original, full_data_or_exc in zip(batch_ids, results,
+                                                             strict=False):
                 if isinstance(full_data_or_exc, Exception) or not full_data_or_exc:
                     continue
 
@@ -316,7 +317,6 @@ class ManifoldScraper(BaseScraper):
 
 async def main():
     import time
-    from pprint import pprint
 
     print("Starting ManifoldScraper example...")
     start_time = time.time()
@@ -327,7 +327,8 @@ async def main():
         print(f"Found {len(open_markets)} OPEN markets matching criteria.")
         if open_markets:
             print(
-                f"First market (open): {open_markets[0].question}, Resolved: {open_markets[0].resolution is not None}"
+                f"First market (open): {open_markets[0].question}, Resolved: "
+                f"{open_markets[0].resolution is not None}"
             )
 
         manually_pooled = [m.to_pooled_market() for m in open_markets]

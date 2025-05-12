@@ -71,25 +71,31 @@ pytest
 
 We use several tools to maintain code quality:
 
-- Black for code formatting:
+- Black and Ruff for code formatting:
 ```bash
 black .
+ruff format .
 ```
 
-- isort for import sorting:
+- Ruff for linting (includes isort, flake8, and many other checks):
 ```bash
-isort .
-```
-
-- Flake8 for style guide enforcement:
-```bash
-flake8 .
+ruff check .
 ```
 
 - MyPy for type checking:
 ```bash
 mypy mootlib tests
 ```
+
+### Code Style
+
+This project follows these code style guidelines:
+- Maximum line length of 88 characters (enforced by Black and Ruff)
+- Double quotes for strings
+- Type hints for all functions
+- Docstrings for complex functions
+- Automatic import sorting with Ruff
+- Strict linting rules enforced by Ruff
 
 ## License
 

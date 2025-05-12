@@ -1,23 +1,7 @@
-from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import plotly.express as px
 from umap import UMAP
-
-
-def combine_embeddings(meta_embeddings_df, poly_embeddings_df):
-    """Combine embeddings from both sources into a single DataFrame with source labels."""
-    meta_df = meta_embeddings_df.copy()
-    poly_df = poly_embeddings_df.copy()
-
-    # Add source column
-    meta_df["source"] = "Metaculus"
-    poly_df["source"] = "Polymarket"
-
-    # Combine the dataframes
-    combined_df = pd.concat([meta_df, poly_df], axis=0)
-    return combined_df
 
 
 def reduce_dimensions(embeddings_df, n_components=2):
@@ -27,25 +11,33 @@ def reduce_dimensions(embeddings_df, n_components=2):
     return reduced_embeddings
 
 
-def create_visualization(meta_embeddings_df, poly_embeddings_df, meta_questions_df):
+def create_visualization(df_to_viz):
     """Create an interactive plotly visualization of the embeddings."""
-    # Combine embeddings
-    combined_df = combine_embeddings(meta_embeddings_df, poly_embeddings_df)
 
     # Reduce dimensions
-    reduced_embeddings = reduce_dimensions(combined_df.drop("source", axis=1))
+    reduced_embeddings = reduce_dimensions(
+        df_to_viz.drop(
+            [
+                "source_platform",
+                "question",
+                "closest_questions_text",
+                "closest_questions",
+                "formatted_outcomes",
+            ],
+            axis=1,
+        )
+    )
 
     # Create visualization DataFrame
     viz_df = pd.DataFrame(reduced_embeddings, columns=["x", "y"])
-    viz_df["source"] = combined_df["source"]
+    viz_df["source_platform"] = df_to_viz["source_platform"]
 
-    # Add question text
-    viz_df["question_text"] = ""
-    viz_df.loc[viz_df["source"] == "Metaculus", "question_text"] = meta_questions_df[
-        "question_text"
-    ].values
-    viz_df.loc[viz_df["source"] == "Polymarket", "question_text"] = (
-        poly_embeddings_df.index.map(lambda x: x if isinstance(x, str) else "")
+    # Add question text and closest questions
+    viz_df["question"] = df_to_viz["question"]
+    viz_df["closest_questions"] = df_to_viz["closest_questions"]
+    viz_df["formatted_outcomes"] = df_to_viz["formatted_outcomes"]
+    viz_df["closest_questions_formatted"] = viz_df["closest_questions"].apply(
+        lambda x: "<br>".join([f"• {q}" for q in x])
     )
 
     # Create the plot
@@ -53,20 +45,44 @@ def create_visualization(meta_embeddings_df, poly_embeddings_df, meta_questions_
         viz_df,
         x="x",
         y="y",
-        color="source",
-        color_discrete_map={"Metaculus": "red", "Polymarket": "gray"},
-        hover_data=["question_text"],
+        color="source_platform",
+        color_discrete_map={
+            "Metaculus": "red",
+            "Polymarket": "gray",
+            "GJOpen": "blue",
+            "PredictIt": "lightgreen",
+            "Manifold": "orange",
+        },
+        hover_data=[
+            "question",
+            "source_platform",
+            "formatted_outcomes",
+            "closest_questions_formatted",
+        ],
         title="UMAP Visualization of Question Embeddings",
-        labels={"x": "UMAP Component 1", "y": "UMAP Component 2"},
+        labels={"x": "TSNE Component 1", "y": "TSNE Component 2"},
     )
 
     # Customize hover template
     fig.update_traces(
-        hovertemplate="<br>".join(["Question: %{customdata[0]}", "<extra></extra>"])
+        hovertemplate="<br>".join(
+            [
+                "Question: %{customdata[0]} (%{customdata[1]})",
+                "Outcomes: %{customdata[2]}",
+                "Closest Questions:<br>%{customdata[3]}<br>",
+                "<extra></extra>",
+            ]
+        )
     )
 
     # Update layout
-    fig.update_layout(hovermode="closest", showlegend=True, legend_title_text="Source")
+    fig.update_layout(
+        hovermode="closest",
+        showlegend=True,
+        legend_title_text="Source",
+        width=1000,
+        height=1000,
+    )
 
     return fig
 

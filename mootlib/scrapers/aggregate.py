@@ -3,7 +3,6 @@ import json
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List
 
 import pandas as pd
 
@@ -11,11 +10,11 @@ from mootlib.scrapers.common_markets import PooledMarket
 from mootlib.scrapers.gjopen import GoodJudgmentOpenScraper
 from mootlib.scrapers.manifold import ManifoldScraper
 from mootlib.scrapers.metaculus import MetaculusScraper
-from mootlib.scrapers.polygamma import PolymarketGammaScraper
+from mootlib.scrapers.polymarket_gamma import PolymarketGammaScraper
 from mootlib.scrapers.predictit import PredictItScraper
 
 
-def save_markets_to_cache(markets: List[PooledMarket], platform: str) -> Path:
+def save_markets_to_cache(markets: list[PooledMarket], platform: str) -> Path:
     """Save markets to a cache file with timestamp."""
     cache_dir = Path("data/cache")
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -43,7 +42,7 @@ def save_markets_to_cache(markets: List[PooledMarket], platform: str) -> Path:
 
 async def fetch_platform_markets(
     scraper, only_open: bool
-) -> tuple[str, List[PooledMarket]]:
+) -> tuple[str, list[PooledMarket]]:
     """Fetch markets from a single platform."""
     platform_name = scraper.__class__.__name__.replace("Scraper", "")
     print(f"\nFetching markets from {platform_name}...")
@@ -59,7 +58,8 @@ async def fetch_platform_markets(
 
             end_time = time.time()
             print(
-                f"Fetched {len(markets)} markets from {platform_name} in {end_time - start_time:.2f} seconds"
+                f"Fetched {len(markets)} markets from {platform_name} in"
+                f" {end_time - start_time:.2f} seconds"
             )
             return platform_name, markets
     except Exception as e:
@@ -67,7 +67,7 @@ async def fetch_platform_markets(
         return platform_name, []
 
 
-async def fetch_all_markets(only_open: bool = True) -> List[PooledMarket]:
+async def fetch_all_markets(only_open: bool = True) -> list[PooledMarket]:
     """
     Fetch markets from all available platforms in parallel.
 
@@ -92,7 +92,7 @@ async def fetch_all_markets(only_open: bool = True) -> List[PooledMarket]:
     )
 
     # Combine results, handling any exceptions
-    all_markets: List[PooledMarket] = []
+    all_markets: list[PooledMarket] = []
     for result in results:
         if isinstance(result, Exception):
             print(f"Error in parallel fetch: {result}")
@@ -103,7 +103,7 @@ async def fetch_all_markets(only_open: bool = True) -> List[PooledMarket]:
     return all_markets
 
 
-def create_markets_dataframe(markets: List[PooledMarket]) -> pd.DataFrame:
+def create_markets_dataframe(markets: list[PooledMarket]) -> pd.DataFrame:
     """
     Convert a list of PooledMarket objects to a pandas DataFrame.
 

@@ -1,7 +1,7 @@
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, List, Optional
+from typing import Any
 
 import pandas as pd
 from forecasting_tools import ApiFilter, MetaculusApi, MetaculusQuestion
@@ -26,8 +26,8 @@ DEFAULT_FILTER = ApiFilter(
 class MetaculusMarket(BaseMarket):
     id: str
     question: str
-    outcomes: List[str]
-    outcome_probabilities: List[float]
+    outcomes: list[str]
+    outcome_probabilities: list[float]
     formatted_outcomes: str
     url: str
     published_time: datetime
@@ -98,7 +98,7 @@ class MyMetaculusApi(MetaculusApi):
 
 
 class MetaculusScraper(BaseScraper):
-    def __init__(self, filter: Optional[ApiFilter] = None):
+    def __init__(self, filter: ApiFilter | None = None):
         self.filter = filter or DEFAULT_FILTER
         self.api = MyMetaculusApi  # Use the existing MyMetaculusApi class
 
@@ -112,7 +112,7 @@ class MetaculusScraper(BaseScraper):
 
     async def fetch_markets(
         self, only_open: bool = True, **kwargs: Any
-    ) -> List[MetaculusMarket]:
+    ) -> list[MetaculusMarket]:
         """
         Fetch markets from Metaculus using the existing MyMetaculusApi logic.
 

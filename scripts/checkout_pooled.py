@@ -4,8 +4,13 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
-from embedding_utils import embed_questions_df
-from matplotlib import pyplot as plt
+from embedding_utils import (
+    create_visualization,
+    embed_questions_df,
+    get_closest_questions,
+    get_distance_matrix,
+)
+from sklearn.manifold import TSNE
 
 df_file = Path("/Users/vigji/code/vigjibot/data/combined_markets.csv")
 pooled_df = pd.read_csv(df_file)
@@ -43,16 +48,12 @@ embedded_df["closest_questions_text"] = embedded_df["closest_questions"].apply(
 )
 embedded_df.head()
 
-for i in [0, 2] + list(np.random.randint(0, len(embedded_df), 10)):
+for i in (0, 2, *np.random.randint(0, len(embedded_df), 10)):
     example = embedded_df.iloc[i]
     print(example.question, example.source_platform)
     print(example.closest_questions_text)
     print("-" * 100)
-import plotly.express as px
 
-# %%
-from sklearn.manifold import TSNE
-from sklearn.metrics.pairwise import cosine_similarity
 
 
 def reduce_dimensions(embeddings_data, n_components=2):
@@ -60,82 +61,6 @@ def reduce_dimensions(embeddings_data, n_components=2):
     tsne = TSNE(n_components=n_components, random_state=42)
     reduced_embeddings = tsne.fit_transform(embeddings_data)
     return reduced_embeddings
-
-
-def create_visualization(df_to_viz):
-    """Create an interactive plotly visualization of the embeddings."""
-
-    # Reduce dimensions
-    reduced_embeddings = reduce_dimensions(
-        df_to_viz.drop(
-            [
-                "source_platform",
-                "question",
-                "closest_questions_text",
-                "closest_questions",
-                "formatted_outcomes",
-            ],
-            axis=1,
-        )
-    )
-
-    # Create visualization DataFrame
-    viz_df = pd.DataFrame(reduced_embeddings, columns=["x", "y"])
-    viz_df["source_platform"] = df_to_viz["source_platform"]
-
-    # Add question text and closest questions
-    viz_df["question"] = df_to_viz["question"]
-    viz_df["closest_questions"] = df_to_viz["closest_questions"]
-    viz_df["formatted_outcomes"] = df_to_viz["formatted_outcomes"]
-    viz_df["closest_questions_formatted"] = viz_df["closest_questions"].apply(
-        lambda x: "<br>".join([f"• {q}" for q in x])
-    )
-
-    # Create the plot
-    fig = px.scatter(
-        viz_df,
-        x="x",
-        y="y",
-        color="source_platform",
-        color_discrete_map={
-            "Metaculus": "red",
-            "Polymarket": "gray",
-            "GJOpen": "blue",
-            "PredictIt": "lightgreen",
-            "Manifold": "orange",
-        },
-        hover_data=[
-            "question",
-            "source_platform",
-            "formatted_outcomes",
-            "closest_questions_formatted",
-        ],
-        title="UMAP Visualization of Question Embeddings",
-        labels={"x": "TSNE Component 1", "y": "TSNE Component 2"},
-    )
-
-    # Customize hover template
-    fig.update_traces(
-        hovertemplate="<br>".join(
-            [
-                "Question: %{customdata[0]} (%{customdata[1]})",
-                "Outcomes: %{customdata[2]}",
-                "Closest Questions:<br>%{customdata[3]}<br>",
-                "<extra></extra>",
-            ]
-        )
-    )
-
-    # Update layout
-    fig.update_layout(
-        hovermode="closest",
-        showlegend=True,
-        legend_title_text="Source",
-        width=1000,
-        height=1000,
-    )
-
-    return fig
 
 
 # %%

@@ -1,16 +1,11 @@
 import asyncio
+import json
 import time
 from dataclasses import dataclass, field
-from datetime import datetime
 from pprint import pprint  # For main example
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import aiohttp
-
-# from pathlib import Path # Not used
-# import json # Not used
-import pandas as pd  # For main example, not core logic
-import requests  # For the scraper
 
 from mootlib.scrapers.common_markets import BaseMarket, BaseScraper, PooledMarket
 
@@ -19,19 +14,19 @@ from mootlib.scrapers.common_markets import BaseMarket, BaseScraper, PooledMarke
 class PredictItContract:
     id: int
     name: str
-    last_trade_price: Optional[float]  # API can return null
-    best_buy_yes_cost: Optional[float]
-    best_sell_yes_cost: Optional[float]
+    last_trade_price: float | None  # API can return null
+    best_buy_yes_cost: float | None
+    best_sell_yes_cost: float | None
 
     @property
-    def spread(self) -> Optional[float]:
+    def spread(self) -> float | None:
         if self.best_buy_yes_cost is not None and self.best_sell_yes_cost is not None:
             val = self.best_buy_yes_cost - self.best_sell_yes_cost
             return val if val >= 0 else None  # Spread shouldn't be negative
         return None
 
     @classmethod
-    def from_api_data(cls, data: Dict[str, Any]) -> "PredictItContract":
+    def from_api_data(cls, data: dict[str, Any]) -> "PredictItContract":
         return cls(
             id=data["id"],
             name=data["name"],
@@ -46,17 +41,19 @@ class PredictItMarket(BaseMarket):
     id: str  # Changed to str for "predictit_" prefix
     name: str  # This is the question
     url: str
-    contracts: List[PredictItContract]
-    api_timestamp: Optional[str]  # Timestamp from API (string)
-    status: Optional[str]  # Market status from API, e.g., "Open", "Closed"
+    contracts: list[PredictItContract]
+    api_timestamp: str | None  # Timestamp from API (string)
+    status: str | None  # Market status from API, e.g., "Open", "Closed"
 
     # Derived fields
-    outcomes: List[str] = field(init=False)
-    outcome_prices: List[Optional[float]] = field(init=False)
+    outcomes: list[str] = field(init=False)
+    outcome_prices: list[float | None] = field(init=False)
     formatted_outcomes: str = field(init=False)
-    # total_liquidity: Optional[float] = field(init=False) # Optional, depends on contract liquidity def
+    # total_liquidity: Optional[float] = field(init=False) # Optional,
+    # depends on contract liquidity def
     # avg_spread: Optional[float] = field(init=False) # Optional
-    # volume: Optional[float] = None # If available from API (usually not in 'all' endpoint directly for market)
+    # volume: Optional[float] = None # If available from API
+    # (usually not in 'all' endpoint directly for market)
     # n_forecasters: Optional[int] = None # If available from API
 
     def __post_init__(self):
@@ -83,8 +80,10 @@ class PredictItMarket(BaseMarket):
 
             # Normalize prices if they are actual probabilities that should sum to 1
             # PredictIt contract prices are 0-100 cents, representing probability * 100
-            # If these are individual independent contracts, normalization might not be appropriate.
-            # For now, assume they are probabilities that should be normalized for multi-outcome.
+            # If these are individual independent contracts, normalization might not
+            # be appropriate.
+            # For now, assume they are probabilities that should be normalized
+            # for multi-outcome.
             valid_prices = [p for p in raw_prices if p is not None]
             if valid_prices:
                 total_price_sum = sum(valid_prices)
@@ -112,19 +111,15 @@ class PredictItMarket(BaseMarket):
             self.formatted_outcomes = "; ".join(
                 [
                     f"{o}: {(p * 100):.1f}%" if p is not None else f"{o}: N/A"
-                    for o, p in zip(self.outcomes, self.outcome_prices)
+                    for o, p in zip(self.outcomes, self.outcome_prices, strict=False)
                 ]
             )
         else:
             self.formatted_outcomes = "N/A"
 
-        # Simplified liquidity/spread logic, or could be removed if not reliable
-        # all_spreads = [c.spread for c in self.contracts if c.spread is not None and c.spread > 0]
-        # self.avg_spread = sum(all_spreads) / len(all_spreads) if all_spreads else None
-        # self.total_liquidity = sum(c.liquidity for c in self.contracts) # Needs robust contract.liquidity
 
     @classmethod
-    def from_api_data(cls, data: Dict[str, Any]) -> "PredictItMarket":
+    def from_api_data(cls, data: dict[str, Any]) -> "PredictItMarket":
         contracts_data = data.get("contracts", [])
         parsed_contracts = [PredictItContract.from_api_data(c) for c in contracts_data]
 
@@ -160,8 +155,8 @@ class PredictItMarket(BaseMarket):
                 self.api_timestamp
             ),  # Using API timestamp as proxy
             source_platform="PredictIt",
-            volume=None,  # PredictIt 'all' endpoint does not provide market-level volume directly
-            n_forecasters=None,  # Not directly available
+            volume=None,  # No volume directly
+            n_forecasters=None,  # Not available
             comments_count=None,  # Not available
             original_market_type=original_type,
             is_resolved=is_res,
@@ -186,7 +181,7 @@ class PredictItScraper(BaseScraper):
         if self.session:
             await self.session.close()
 
-    async def _fetch_raw_data(self) -> Optional[Dict[str, Any]]:
+    async def _fetch_raw_data(self) -> dict[str, Any] | None:
         """Fetch raw data from PredictIt API."""
         if not self.session:
             self.session = aiohttp.ClientSession(
@@ -206,7 +201,7 @@ class PredictItScraper(BaseScraper):
 
     async def fetch_markets(
         self, only_open: bool = True, **kwargs: Any
-    ) -> List[PredictItMarket]:
+    ) -> list[PredictItMarket]:
         """
         Fetch markets from PredictIt API.
 
@@ -222,7 +217,7 @@ class PredictItScraper(BaseScraper):
             return []
 
         api_markets_data = raw_response_data.get("markets", [])
-        parsed_markets: List[PredictItMarket] = []
+        parsed_markets: list[PredictItMarket] = []
 
         for market_data_dict in api_markets_data:
             try:
@@ -234,7 +229,8 @@ class PredictItScraper(BaseScraper):
                     parsed_markets.append(market_obj)
             except Exception as e:
                 print(
-                    f"Error parsing PredictIt market ID {market_data_dict.get('id', 'Unknown')}: {e}"
+                    f"Error parsing PredictIt market ID"
+                    f" {market_data_dict.get('id', 'Unknown')}: {e}"
                 )
 
         return parsed_markets
@@ -246,7 +242,8 @@ async def main():
 
     fetch_only_open_markets = True
     print(
-        f"Fetching {'open' if fetch_only_open_markets else 'all'} markets from PredictIt..."
+        f"Fetching {'open' if fetch_only_open_markets else 'all'} markets"
+        "from PredictIt..."
     )
     start_time = time.time()
 
@@ -261,7 +258,8 @@ async def main():
     if predictit_market_list:
         # Example of getting pooled markets using the BaseScraper method
         print(
-            "\nConverting fetched PredictIt markets to PooledMarket format using get_pooled_markets..."
+            "\nConverting fetched PredictIt markets to PooledMarket"
+            "format using get_pooled_markets..."
         )
         pooled_markets = await scraper.get_pooled_markets(
             only_open=fetch_only_open_markets
@@ -271,14 +269,9 @@ async def main():
         if pooled_markets:
             print("Details of the first pooled market (PredictIt):")
             pprint(pooled_markets[0].__dict__)
-
-            # Optional: Create a DataFrame for analysis or CSV export
-            # df_pooled = pd.DataFrame([pm.__dict__ for pm in pooled_markets])
-            # print(f"Created DataFrame with {len(df_pooled)} pooled PredictIt markets.")
-            # print(df_pooled.head())
         else:
             print(
-                "No PredictIt markets were successfully converted to PooledMarket format."
+                "No PredictIt markets successfully converted to PooledMarket format."
             )
     else:
         print("No markets were fetched from PredictIt.")

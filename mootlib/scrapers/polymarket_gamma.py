@@ -1,25 +1,21 @@
 # %%
 
 import json
-import os
 import time
 from dataclasses import dataclass
 from datetime import datetime  # , timedelta # timedelta not used
 
 # import numpy as np # Not explicitly used
 # from openai import OpenAI # Not used
-from functools import lru_cache
-from pathlib import Path
+from functools import cache
 from pprint import pprint
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import aiohttp
 import dotenv
-import pandas as pd
 
 # from py_clob_client.client import ClobClient, TradeParams # Not used in this version
 # from py_clob_client.constants import POLYGON # Not used in this version
-import requests
 from tqdm import tqdm
 
 from mootlib.scrapers.common_markets import BaseMarket, BaseScraper, PooledMarket
@@ -30,8 +26,8 @@ dotenv.load_dotenv()
 GAMMA_API_BASE_URL = "https://gamma-api.polymarket.com"
 
 
-@lru_cache(maxsize=None)
-def parse_outcomes_string(outcomes_str: str) -> List[str]:
+@cache
+def parse_outcomes_string(outcomes_str: str) -> list[str]:
     if not outcomes_str or not isinstance(outcomes_str, str):
         return []
     try:
@@ -44,12 +40,11 @@ def parse_outcomes_string(outcomes_str: str) -> List[str]:
 
 
 def format_outcomes_polymarket(
-    outcomes: List[str], prices: Optional[List[float]] = None
+    outcomes: list[str], prices: list[float] | None = None
 ) -> str:
     if not outcomes:
         return "N/A"
     if not prices or len(outcomes) != len(prices):
-        # print(f"Warning: Outcomes and prices length mismatch or prices missing. Outcomes: {outcomes}, Prices: {prices}")
         return "; ".join([f"{name}: N/A" for name in outcomes])
     return "; ".join(
         [
@@ -58,7 +53,7 @@ def format_outcomes_polymarket(
                 if price is not None
                 else f"{name}: N/A"
             )
-            for name, price in zip(outcomes, prices)
+            for name, price in zip(outcomes, prices, strict=False)
         ]
     )
 
@@ -84,30 +79,28 @@ class PolymarketMarket(BaseMarket):
     question: str
     slug: str
     description: str
-    outcomes: List[str]
-    outcome_prices: Optional[
-        List[Optional[float]]
-    ]  # Prices corresponding to outcomes, can have None
+    outcomes: list[str]
+    outcome_prices: list[float | None] | None  # Prices <-> outcomes, can have None
     formatted_outcomes: str
     url: str
     total_volume: float
     liquidity: float
-    end_date: Optional[datetime]
-    created_at: Optional[datetime]
-    updated_at: Optional[datetime]
+    end_date: datetime | None
+    created_at: datetime | None
+    updated_at: datetime | None
     active: bool  # From API
     closed: bool  # From API, used for is_resolved
-    resolution_source: Optional[str]
+    resolution_source: str | None
     # Store raw API type if available for more accurate original_market_type
-    raw_market_type: Optional[str] = None
+    raw_market_type: str | None = None
 
     @classmethod
-    def from_api_data(cls, data: Dict[str, Any]) -> "PolymarketMarket":
+    def from_api_data(cls, data: dict[str, Any]) -> "PolymarketMarket":
         raw_outcomes = data.get("outcomes", "[]")
         parsed_outcomes_list = parse_outcomes_string(raw_outcomes)
 
         raw_outcome_prices_payload = data.get("outcomePrices")
-        parsed_outcome_prices_list: List[Optional[float]] = []
+        parsed_outcome_prices_list: list[float | None] = []
 
         temp_prices_for_parsing = []
         if isinstance(raw_outcome_prices_payload, str):
@@ -132,7 +125,7 @@ class PolymarketMarket(BaseMarket):
                 parsed_outcome_prices_list.extend(
                     [None] * (num_outcomes - len(parsed_outcome_prices_list))
                 )
-        else:  # No prices provided or parse failed, fill with Nones matching outcomes length
+        else:  # No prices provided or parse failed
             parsed_outcome_prices_list = [None] * len(parsed_outcomes_list)
 
         formatted_outcomes_str = format_outcomes_polymarket(
@@ -181,7 +174,7 @@ class PolymarketMarket(BaseMarket):
             ),
             raw_market_type=safe_str(
                 data.get("category")
-            ),  # Assuming 'category' might be 'Sports', 'Politics' etc. or sometimes 'Binary'
+            )
         )
 
     def to_pooled_market(self) -> PooledMarket:
@@ -218,7 +211,7 @@ class PolymarketMarket(BaseMarket):
             published_at=self.created_at,  # Use created_at as published_at
             source_platform="Polymarket",
             volume=self.total_volume,
-            n_forecasters=None,  # Not directly available in the provided Polymarket API data struct
+            n_forecasters=None,  # Not available in the Polymarket API data struct
             comments_count=None,  # Not directly available
             original_market_type=market_type,
             is_resolved=self.closed,
@@ -241,7 +234,7 @@ class PolymarketGammaScraper(BaseScraper):
         if self.session:
             await self.session.close()
 
-    async def _fetch_page_data(self, limit: int, offset: int) -> List[Dict[str, Any]]:
+    async def _fetch_page_data(self, limit: int, offset: int) -> list[dict[str, Any]]:
         if not self.session:
             self.session = aiohttp.ClientSession()
 
@@ -259,16 +252,18 @@ class PolymarketGammaScraper(BaseScraper):
             print(f"Error decoding JSON from Gamma API (offset {offset}): {e}")
             return []
 
-    # Note: Async, but internal calls are effectively synchronous due to _fetch_page_data
+    # Note: Async, but internal calls are effectively synchronous due to fetch_page_data
     async def _fetch_all_raw_markets(
         self, max_requests: int = 200
-    ) -> List[Dict[str, Any]]:
-        all_raw_market_data: List[Dict[str, Any]] = []
+    ) -> list[dict[str, Any]]:
+        all_raw_market_data: list[dict[str, Any]] = []
         offset = 0
         LIMIT_PER_PAGE = 500
 
-        # tqdm is not async-friendly by default, consider alternatives or careful usage in async.
-        # For this refactor, keeping it but noting potential issues in highly concurrent scenarios.
+        # tqdm is not async-friendly by default, consider alternatives or careful
+        # usage in async.
+        # For this refactor, keeping it but noting potential issues in highly
+        # concurrent scenarios.
         for i in tqdm(range(max_requests), desc="Fetching Polymarket pages"):
             raw_data_list = await self._fetch_page_data(
                 limit=LIMIT_PER_PAGE, offset=offset
@@ -285,9 +280,10 @@ class PolymarketGammaScraper(BaseScraper):
 
     async def fetch_markets(
         self, only_open: bool = True, min_volume: float = 10000, **kwargs: Any
-    ) -> List[PolymarketMarket]:
+    ) -> list[PolymarketMarket]:
         """
-        Fetch markets from Polymarket Gamma API and parse them into PolymarketMarket objects.
+        Fetch markets from Polymarket Gamma API and parse them into PolymarketMarket
+        objects.
 
         Args:
             only_open: Whether to return only open markets (where closed is False).
@@ -300,7 +296,7 @@ class PolymarketGammaScraper(BaseScraper):
 
         raw_markets_data = await self._fetch_all_raw_markets(max_requests=max_requests)
 
-        parsed_markets: List[PolymarketMarket] = []
+        parsed_markets: list[PolymarketMarket] = []
         if not raw_markets_data:
             # print("No raw market data fetched from Gamma API.")
             return []
@@ -318,7 +314,8 @@ class PolymarketGammaScraper(BaseScraper):
 
             except Exception as e:
                 print(
-                    f"Error parsing market data for market ID {market_data_dict.get('id', 'Unknown')}: {e}"
+                    f"Error parsing market data for market ID"
+                    f" {market_data_dict.get('id', 'Unknown')}: {e}"
                 )
 
         # print(f"Successfully parsed {len(parsed_markets)} markets.")
@@ -345,7 +342,8 @@ if __name__ == "__main__":
 
         if polymarket_list:
             print(
-                "\nConverting fetched Polymarket markets to PooledMarket format using get_pooled_markets..."
+                "\nConverting fetched Polymarket markets to PooledMarket format using"
+                "get_pooled_markets..."
             )
             pooled_markets = await scraper.get_pooled_markets()
             print(f"Converted {len(pooled_markets)} markets to PooledMarket format.")
@@ -355,7 +353,7 @@ if __name__ == "__main__":
                 pprint(pooled_markets[0].__dict__)
             else:
                 print(
-                    "No Polymarket markets were successfully converted to PooledMarket format."
+                    "No Polymarket markets converted to PooledMarket format."
                 )
         else:
             print("No markets were fetched from Polymarket.")

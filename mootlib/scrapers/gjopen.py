@@ -3,14 +3,11 @@ import os
 import re
 import time
 from dataclasses import dataclass
-from pathlib import Path
-from pprint import pprint
-from typing import Any, List, Optional
+from typing import Any
 from urllib.parse import urljoin
 
 import aiohttp
 import pandas as pd
-import requests
 from bs4 import BeautifulSoup
 from tqdm import tqdm
 
@@ -31,13 +28,12 @@ LOGIN_URL = f"{BASE_URL}/users/sign_in"
 @dataclass
 class GJOpenAnswer:
     name: str
-    probability: Optional[float] = None
-    # id: Optional[int] = None # Uncomment if you plan to use it
+    probability: float | None = None
 
 
 @dataclass
 class GJOpenMarket(BaseMarket):
-    id: str  # Changed from int
+    id: str
     question: str
     published_at: str
     predictors_count: int
@@ -45,8 +41,7 @@ class GJOpenMarket(BaseMarket):
     description: str
     binary: bool
     continuous_scored: bool
-    outcomes: List[GJOpenAnswer]
-
+    outcomes: list[GJOpenAnswer]
     formatted_outcomes: str
     url: str
     q_type: str
@@ -54,7 +49,7 @@ class GJOpenMarket(BaseMarket):
     @classmethod
     def from_gjopen_question_data(
         cls, q_props: dict, question_url: str
-    ) -> Optional["GJOpenMarket"]:  # Changed Market to GJOpenMarket
+    ) -> "GJOpenMarket | None":
         if not q_props:
             return None
 
@@ -63,32 +58,33 @@ class GJOpenMarket(BaseMarket):
             GJOpenAnswer(
                 name=a.get("name"),
                 probability=a.get("probability"),
-                # id=a.get("id")
             )
             for a in outcomes_data
         ]
-        # Updated formatted_outcomes to handle None probabilities
-        formatted_outcomes_str = "; ".join(
-            [
-                f"{a.name.strip()}: {f'{a.probability*100:.1f}%' if a.probability is not None else 'N/A'}"
-                for a in outcomes_list
-            ]
-        )
-        formatted_outcomes_str = formatted_outcomes_str.replace("\n", "").replace(
-            "\r", ""
+
+        # Format outcomes with proper line breaks
+        outcomes_parts = []
+        for a in outcomes_list:
+            prob_str = (
+                f"{a.probability*100:.1f}%"
+                if a.probability is not None
+                else "N/A"
+            )
+            outcomes_parts.append(f"{a.name.strip()}: {prob_str}")
+
+        formatted_outcomes_str = (
+            "; ".join(outcomes_parts).replace("\n", "").replace("\r", "")
         )
 
         return cls(
-            id="gjopen_" + str(q_props.get("id")),  # id is now string
+            id="gjopen_" + str(q_props.get("id")),
             question=q_props.get("name", ""),
             published_at=q_props.get("published_at"),
             predictors_count=q_props.get("predictors_count"),
             comments_count=q_props.get("comments_count"),
             description=q_props.get("description", ""),
-            binary=bool(q_props.get("binary?")),  # Ensure bool conversion
-            continuous_scored=bool(
-                q_props.get("continuous_scored?")
-            ),  # Ensure bool conversion
+            binary=bool(q_props.get("binary?")),
+            continuous_scored=bool(q_props.get("continuous_scored?")),
             outcomes=outcomes_list,
             url=question_url,
             q_type=q_props.get("type"),
@@ -112,27 +108,20 @@ class GJOpenMarket(BaseMarket):
             n_forecasters=self.predictors_count,
             comments_count=self.comments_count,
             original_market_type=self.q_type,
-            is_resolved=None,  # No direct field, q_type might hint but not a clear boolean
+            is_resolved=None,  # No such field in GJOpen API
             raw_market_data=self,
         )
 
 
 class GoodJudgmentOpenScraper(BaseScraper):
-    """
-    Scrapes market data from Good Judgment Open.
-    Handles authentication, paginated question fetching, and data parsing.
-    """
+    """Scrapes market data from Good Judgment Open."""
 
     BASE_URL = "https://www.gjopen.com"
     QUESTIONS_URL = f"{BASE_URL}/questions"
     LOGIN_URL = f"{BASE_URL}/users/sign_in"
 
-    def __init__(self, email: Optional[str] = None, password: Optional[str] = None):
-        """
-        Initializes the scraper and logs in.
-        Authentication credentials can be provided directly or loaded from
-        environment variables (GJO_EMAIL, GJO_PASSWORD).
-        """
+    def __init__(self, email: str | None = None, password: str | None = None):
+        """Initialize scraper with optional credentials."""
         self.session = None
         self.headers = {"User-Agent": "Mozilla/5.0 (compatible; PythonScraper/1.0)"}
 
@@ -158,7 +147,7 @@ class GoodJudgmentOpenScraper(BaseScraper):
             await self.session.close()
 
     async def _login(self):
-        """Logs into Good Judgment Open."""
+        """Log into Good Judgment Open."""
         if not self.session:
             self.session = aiohttp.ClientSession(headers=self.headers)
 
@@ -167,42 +156,43 @@ class GoodJudgmentOpenScraper(BaseScraper):
                 response.raise_for_status()
                 login_page = await response.text()
         except aiohttp.ClientError as e:
-            raise ConnectionError(f"Failed to fetch login page: {e}")
+            raise ConnectionError("Failed to fetch login page") from e
 
         soup = BeautifulSoup(login_page, "html.parser")
         csrf_token_tag = soup.select_one('meta[name="csrf-token"]')
         if not csrf_token_tag or not csrf_token_tag.get("content"):
-            raise ValueError("Could not find CSRF token on login page.")
-        csrf_token = csrf_token_tag["content"]
+            raise ValueError("Could not find CSRF token on login page")
 
+        csrf_token = csrf_token_tag["content"]
         login_data = {
             "user[email]": self.email,
             "user[password]": self.password,
             "authenticity_token": csrf_token,
         }
+
         try:
             async with self.session.post(
-                self.LOGIN_URL, data=login_data, timeout=10
+                self.LOGIN_URL,
+                data=login_data,
+                timeout=10,
             ) as response:
                 response.raise_for_status()
                 resp_text = await response.text()
         except aiohttp.ClientError as e:
-            raise ConnectionError(f"Login request failed: {e}")
+            raise ConnectionError("Login request failed") from e
 
         if "Invalid Email or password" in resp_text or "sign_in" in str(response.url):
-            raise ValueError("Login failed - please check credentials.")
+            raise ValueError("Login failed - please check credentials")
 
-    async def _fetch_question_links_for_page(self, page: int = None) -> List[str]:
-        """Fetches all question links from a given results page."""
+    async def _fetch_question_links_for_page(self,
+                                             page: int | None = None) -> list[str]:
+        """Fetch all question links from a given results page."""
         if not self.session:
             self.session = aiohttp.ClientSession(headers=self.headers)
 
-        if page is None:
-            url = f"{self.QUESTIONS_URL}?sort=predictors_count&sort_dir=desc"
-        else:
-            url = (
-                f"{self.QUESTIONS_URL}?sort=predictors_count&sort_dir=desc&page={page}"
-            )
+        url = f"{self.QUESTIONS_URL}?sort=predictors_count&sort_dir=desc"
+        if page is not None:
+            url = f"{url}&page={page}"
 
         try:
             async with self.session.get(url, timeout=10) as response:
@@ -218,13 +208,16 @@ class GoodJudgmentOpenScraper(BaseScraper):
 
     async def _fetch_market_data_for_url(
         self, question_url: str
-    ) -> Optional[GJOpenMarket]:
-        """Fetches and parses market data for a single question URL."""
+    ) -> GJOpenMarket | None:
+        """Fetch and parse market data for a single question URL."""
         if not self.session:
             self.session = aiohttp.ClientSession(headers=self.headers)
 
         try:
-            async with self.session.get(question_url, timeout=10) as response:
+            async with self.session.get(
+                question_url,
+                timeout=10,
+            ) as response:
                 response.raise_for_status()
                 resp_text = await response.text()
         except aiohttp.ClientError as e:
@@ -232,42 +225,36 @@ class GoodJudgmentOpenScraper(BaseScraper):
             return None
 
         soup = BeautifulSoup(resp_text, "html.parser")
+        react_class = "FOF.Forecast.PredictionInterfaces.OpinionPoolInterface"
         react_div = soup.find(
             "div",
-            {
-                "data-react-class": "FOF.Forecast.PredictionInterfaces.OpinionPoolInterface"
-            },
+            {"data-react-class": react_class},
         )
 
-        if react_div and react_div.has_attr("data-react-props"):
-            try:
-                props_str = react_div["data-react-props"]
-                props = json.loads(props_str)
-            except json.JSONDecodeError:
-                return None
+        if not (react_div and react_div.has_attr("data-react-props")):
+            return None
 
-            q_props = props.get("question", {})
-            if not q_props:
-                return None
+        try:
+            props = json.loads(react_div["data-react-props"])
+        except json.JSONDecodeError:
+            return None
 
-            market_data = GJOpenMarket.from_gjopen_question_data(q_props, question_url)
-            return market_data
-        return None
+        q_props = props.get("question", {})
+        return GJOpenMarket.from_gjopen_question_data(q_props, question_url)
 
     async def fetch_markets(
         self,
         only_open: bool = True,
         min_n_forecasters: int = VALID_MARKETS_FILTER.min_n_forecasters,
         **kwargs: Any,
-    ) -> List[GJOpenMarket]:
+    ) -> list[GJOpenMarket]:
         """
-        Fetches markets from Good Judgment Open.
+        Fetch markets from Good Judgment Open.
 
         Args:
             only_open: If True, attempts to fetch only open markets.
-                       (Note: GJOpen API for listing questions doesn't directly support
-                        filtering by 'open' status, so this flag is a placeholder for
-                        potential future post-filtering logic if resolution status becomes available.)
+                      Note: GJOpen API doesn't directly support filtering by status.
+            min_n_forecasters: Minimum number of forecasters required.
             **kwargs: Supports 'max_pages' (int, default 15) for pagination.
 
         Returns:
@@ -276,22 +263,20 @@ class GoodJudgmentOpenScraper(BaseScraper):
         MAX_PAGES = 20
         PAUSE_AFTER_PAGE = kwargs.get("pause_after_page", 0.6)
         PAUSE_AFTER_MARKET = kwargs.get("pause_after_market", 0.7)
-        all_markets_data: List[GJOpenMarket] = []
+        all_markets_data: list[GJOpenMarket] = []
 
         for page_num in tqdm(range(1, MAX_PAGES + 1), desc="Scraping GJOpen pages"):
             question_links = await self._fetch_question_links_for_page(page_num)
             if not question_links:
                 break
 
-            market_objs_on_page: List[GJOpenMarket] = []
+            market_objs_on_page: list[GJOpenMarket] = []
             for i, link in enumerate(question_links):
                 try:
                     market_obj = await self._fetch_market_data_for_url(link)
                     if market_obj and market_obj.question not in [
                         m.question for m in all_markets_data
                     ]:
-                        # If only_open is True, we ideally would filter here if market_obj had resolution status.
-                        # For now, all fetched markets are added, and filtering happens later if PooledMarket has status.
                         market_objs_on_page.append(market_obj)
                 except Exception as e:
                     print(f"    Failed to process {link}: {e}")
@@ -303,7 +288,8 @@ class GoodJudgmentOpenScraper(BaseScraper):
                 break
 
             all_markets_data.extend(market_objs_on_page)
-            # Pages are sorted by number of forecasters, so we can break if we've seen enough
+
+            # Break if we've seen enough low-forecaster markets
             if all(
                 market.predictors_count < min_n_forecasters
                 for market in market_objs_on_page
@@ -315,15 +301,10 @@ class GoodJudgmentOpenScraper(BaseScraper):
 
             time.sleep(PAUSE_AFTER_PAGE)
 
-        # GJOpen does not provide resolution status directly in the list or question props easily.
-        # The `only_open` filter is thus hard to apply perfectly at this stage for GJOpenMarket itself.
-        # The `to_pooled_market` for GJOpen sets `is_resolved=None`.
-        # If `only_open` is critical, one might need to infer resolution from other fields or skip GJOpen if status is a must.
         return all_markets_data
 
 
 if __name__ == "__main__":
-    # For async main:
     import asyncio
 
     async def run_gjopen_scraper():
@@ -335,11 +316,8 @@ if __name__ == "__main__":
 
             start_time = time.time()
 
-            async with scraper:  # Use async context manager
-                # Fetch markets using get_pooled_markets directly
-                pooled_markets = await scraper.get_pooled_markets(
-                    only_open=True,
-                )
+            async with scraper:
+                pooled_markets = await scraper.get_pooled_markets(only_open=True)
 
                 end_time = time.time()
                 print(f"\nFetching took {end_time - start_time:.2f} seconds.")
@@ -347,7 +325,6 @@ if __name__ == "__main__":
 
                 if pooled_markets:
                     print("\nDetails of the first pooled market:")
-
                     df_pooled = pd.DataFrame([pm.__dict__ for pm in pooled_markets])
                     print(f"\nCreated DataFrame with {len(df_pooled)} pooled markets.")
                 else:
@@ -356,7 +333,8 @@ if __name__ == "__main__":
         except (FileNotFoundError, ValueError, ConnectionError) as e:
             print(f"Error: {e}")
             print(
-                "Please ensure credentials are set up via environment variables (GJO_EMAIL, GJO_PASSWORD)"
+                "Please ensure credentials are set up via environment variables "
+                "(GJO_EMAIL, GJO_PASSWORD)"
             )
 
     asyncio.run(run_gjopen_scraper())
