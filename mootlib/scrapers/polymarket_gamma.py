@@ -39,7 +39,8 @@ def parse_outcomes_string(outcomes_str: str) -> list[str]:
 
 
 def format_outcomes_polymarket(
-    outcomes: list[str], prices: list[float] | None = None,
+    outcomes: list[str],
+    prices: list[float] | None = None,
 ) -> str:
     if not outcomes:
         return "N/A"
@@ -128,7 +129,8 @@ class PolymarketMarket(BaseMarket):
             parsed_outcome_prices_list = [None] * len(parsed_outcomes_list)
 
         formatted_outcomes_str = format_outcomes_polymarket(
-            parsed_outcomes_list, parsed_outcome_prices_list,
+            parsed_outcomes_list,
+            parsed_outcome_prices_list,
         )
 
         total_volume = safe_float(data.get("volume"))
@@ -240,7 +242,9 @@ class PolymarketGammaScraper(BaseScraper):
         params = {"limit": limit, "offset": offset}
         try:
             async with self.session.get(
-                f"{self.BASE_URL}/markets", params=params, timeout=self.timeout,
+                f"{self.BASE_URL}/markets",
+                params=params,
+                timeout=self.timeout,
             ) as response:
                 response.raise_for_status()
                 return await response.json()
@@ -251,7 +255,8 @@ class PolymarketGammaScraper(BaseScraper):
 
     # Note: Async, but internal calls are effectively synchronous due to fetch_page_data
     async def _fetch_all_raw_markets(
-        self, max_requests: int = 200,
+        self,
+        max_requests: int = 200,
     ) -> list[dict[str, Any]]:
         all_raw_market_data: list[dict[str, Any]] = []
         offset = 0
@@ -263,7 +268,8 @@ class PolymarketGammaScraper(BaseScraper):
         # concurrent scenarios.
         for i in tqdm(range(max_requests), desc="Fetching Polymarket pages"):
             raw_data_list = await self._fetch_page_data(
-                limit=LIMIT_PER_PAGE, offset=offset,
+                limit=LIMIT_PER_PAGE,
+                offset=offset,
             )
             if not raw_data_list:
                 break
@@ -276,7 +282,10 @@ class PolymarketGammaScraper(BaseScraper):
         return all_raw_market_data
 
     async def fetch_markets(
-        self, only_open: bool = True, min_volume: float = 10000, **kwargs: Any,
+        self,
+        only_open: bool = True,
+        min_volume: float = 10000,
+        **kwargs: Any,
     ) -> list[PolymarketMarket]:
         """Fetch markets from Polymarket Gamma API and parse them into PolymarketMarket
         objects.
@@ -329,7 +338,6 @@ if __name__ == "__main__":
         )
 
         time.time()
-
 
         if polymarket_list:
             pooled_markets = await scraper.get_pooled_markets()

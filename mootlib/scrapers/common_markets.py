@@ -104,7 +104,9 @@ class BaseScraper(ABC):
         """
 
     async def get_pooled_markets(
-        self, only_open: bool = True, **kwargs,
+        self,
+        only_open: bool = True,
+        **kwargs,
     ) -> list[PooledMarket]:
         """Fetches markets and converts them to the PooledMarket format.
 
@@ -116,7 +118,8 @@ class BaseScraper(ABC):
             A list of PooledMarket objects.
         """
         platform_specific_markets = await self.fetch_markets(
-            only_open=only_open, **kwargs,
+            only_open=only_open,
+            **kwargs,
         )
         pooled_markets = []
         for market in platform_specific_markets:

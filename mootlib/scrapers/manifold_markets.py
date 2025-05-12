@@ -70,8 +70,9 @@ class ManifoldMarket:
     @staticmethod
     def _format_outcomes(outcomes: list[str], prices: list[float]) -> str:
         """Format outcomes and prices into a string."""
-        return "; ".join([f"{o}: {(p * 100):.1f}%"
-                          for o, p in zip(outcomes, prices, strict=False)])
+        return "; ".join(
+            [f"{o}: {(p * 100):.1f}%" for o, p in zip(outcomes, prices, strict=False)]
+        )
 
     @classmethod
     def from_api_data(cls, data: dict[str, Any]) -> Optional["ManifoldMarket"]:
@@ -192,7 +193,10 @@ class ManifoldScraper(BaseScraper):
             return None
 
     async def _fetch_raw_markets_list(
-        self, limit: int = 1000, before: str | None = None, only_open: bool = True,
+        self,
+        limit: int = 1000,
+        before: str | None = None,
+        only_open: bool = True,
     ) -> list[dict[str, Any]]:
         """Fetch a list of markets from API, with optional pagination and open status
         filter.
@@ -209,7 +213,9 @@ class ManifoldScraper(BaseScraper):
         all_markets_batch = []
         try:
             async with self.session.get(
-                base_url, params=params, headers=self.headers,
+                base_url,
+                params=params,
+                headers=self.headers,
             ) as response:
                 response.raise_for_status()
                 markets_page = await response.json()
@@ -254,10 +260,11 @@ class ManifoldScraper(BaseScraper):
         last_market_id: str | None = None
         markets_fetched_count = 0
 
-
         while True:
             current_batch = await self._fetch_raw_markets_list(
-                limit=1000, before=last_market_id, only_open=only_open,  # batch_limit,
+                limit=1000,
+                before=last_market_id,
+                only_open=only_open,  # batch_limit,
             )
             if not current_batch:
                 break
@@ -289,8 +296,9 @@ class ManifoldScraper(BaseScraper):
             tasks = [self._get_market_details(market_id) for market_id in batch_ids]
             results = await asyncio.gather(*tasks, return_exceptions=True)
 
-            for _market_id_original, full_data_or_exc in zip(batch_ids, results,
-                                                             strict=False):
+            for _market_id_original, full_data_or_exc in zip(
+                batch_ids, results, strict=False
+            ):
                 if isinstance(full_data_or_exc, Exception) or not full_data_or_exc:
                     continue
 

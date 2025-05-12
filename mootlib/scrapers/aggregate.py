@@ -41,7 +41,8 @@ def save_markets_to_cache(markets: list[PooledMarket], platform: str) -> Path:
 
 
 async def fetch_platform_markets(
-    scraper, only_open: bool,
+    scraper,
+    only_open: bool,
 ) -> tuple[str, list[PooledMarket]]:
     """Fetch markets from a single platform."""
     platform_name = scraper.__class__.__name__.replace("Scraper", "")
@@ -108,7 +109,8 @@ def create_markets_dataframe(markets: list[PooledMarket]) -> pd.DataFrame:
     for market in markets:
         market_dict = market.__dict__.copy()
         market_dict.pop(
-            "raw_market_data", None,
+            "raw_market_data",
+            None,
         )  # Remove raw data to keep DataFrame clean
         market_dicts.append(market_dict)
 

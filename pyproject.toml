@@ -58,16 +58,17 @@ line-length = 88
 fix = true
 unsafe-fixes = true
 
-# Select all rules by default
-select = ["ALL"]
-
-# Ignore specific rules if needed
-ignore = []
-
 # Exclude scripts directory from package checks
 exclude = ["scripts/*"]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint]
+# Select all rules by default
+select = ["ALL"]
+
+# Ignore rules that conflict with the formatter
+ignore = ["COM812", "ISC001"]
+
+[tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.ruff.format]

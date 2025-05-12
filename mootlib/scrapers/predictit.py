@@ -116,7 +116,6 @@ class PredictItMarket(BaseMarket):
         else:
             self.formatted_outcomes = "N/A"
 
-
     @classmethod
     def from_api_data(cls, data: dict[str, Any]) -> "PredictItMarket":
         contracts_data = data.get("contracts", [])
@@ -197,7 +196,9 @@ class PredictItScraper(BaseScraper):
             return None
 
     async def fetch_markets(
-        self, only_open: bool = True, **kwargs: Any,
+        self,
+        only_open: bool = True,
+        **kwargs: Any,
     ) -> list[PredictItMarket]:
         """Fetch markets from PredictIt API.
 
@@ -239,7 +240,6 @@ async def main() -> None:
         only_open=fetch_only_open_markets,
     )
     time.time()
-
 
     if predictit_market_list:
         # Example of getting pooled markets using the BaseScraper method

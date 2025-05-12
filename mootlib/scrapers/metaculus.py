@@ -74,7 +74,8 @@ class MetaculusMarket(BaseMarket):
 class MyMetaculusApi(MetaculusApi):
     @classmethod
     async def grab_all_questions_with_filter(
-        cls, filter: ApiFilter = None,
+        cls,
+        filter: ApiFilter = None,
     ) -> list[MetaculusQuestion]:
         # This is reachable - the filter parameter is optional and can be None
         if filter is None:
@@ -110,7 +111,9 @@ class MetaculusScraper(BaseScraper):
         """Async context manager exit - nothing to clean up for Metaculus."""
 
     async def fetch_markets(
-        self, only_open: bool = True, **kwargs: Any,
+        self,
+        only_open: bool = True,
+        **kwargs: Any,
     ) -> list[MetaculusMarket]:
         """Fetch markets from Metaculus using the existing MyMetaculusApi logic.
 
@@ -137,7 +140,6 @@ async def main() -> None:
         time.time()
 
         if markets:
-
             pd.DataFrame([pm.__dict__ for pm in markets])
         else:
             pass

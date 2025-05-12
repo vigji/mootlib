@@ -1,4 +1,3 @@
-
 import pandas as pd
 import plotly.express as px
 from umap import UMAP
@@ -86,6 +85,8 @@ if __name__ == "__main__":
 
     # Create and show the visualization
     fig = create_visualization(
-        meta_embeddings_df, poly_embeddings_df, meta_questions_df,
+        meta_embeddings_df,
+        poly_embeddings_df,
+        meta_questions_df,
     )
     fig.show()

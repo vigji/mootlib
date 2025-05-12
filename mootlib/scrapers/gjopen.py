@@ -48,7 +48,9 @@ class GJOpenMarket(BaseMarket):
 
     @classmethod
     def from_gjopen_question_data(
-        cls, q_props: dict, question_url: str,
+        cls,
+        q_props: dict,
+        question_url: str,
     ) -> "GJOpenMarket | None":
         if not q_props:
             return None
@@ -66,9 +68,7 @@ class GJOpenMarket(BaseMarket):
         outcomes_parts = []
         for a in outcomes_list:
             prob_str = (
-                f"{a.probability*100:.1f}%"
-                if a.probability is not None
-                else "N/A"
+                f"{a.probability*100:.1f}%" if a.probability is not None else "N/A"
             )
             outcomes_parts.append(f"{a.name.strip()}: {prob_str}")
 
@@ -189,8 +189,9 @@ class GoodJudgmentOpenScraper(BaseScraper):
             msg = "Login failed - please check credentials"
             raise ValueError(msg)
 
-    async def _fetch_question_links_for_page(self,
-                                             page: int | None = None) -> list[str]:
+    async def _fetch_question_links_for_page(
+        self, page: int | None = None
+    ) -> list[str]:
         """Fetch all question links from a given results page."""
         if not self.session:
             self.session = aiohttp.ClientSession(headers=self.headers)
@@ -211,7 +212,8 @@ class GoodJudgmentOpenScraper(BaseScraper):
         return [urljoin(self.BASE_URL, link["href"]) for link in links]
 
     async def _fetch_market_data_for_url(
-        self, question_url: str,
+        self,
+        question_url: str,
     ) -> GJOpenMarket | None:
         """Fetch and parse market data for a single question URL."""
         if not self.session:
@@ -310,7 +312,6 @@ if __name__ == "__main__":
     import asyncio
 
     async def run_gjopen_scraper() -> None:
-
         try:
             scraper = GoodJudgmentOpenScraper()
 
