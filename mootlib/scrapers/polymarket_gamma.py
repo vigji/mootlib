@@ -52,9 +52,11 @@ def format_outcomes_polymarket(
         return "; ".join([f"{name}: N/A" for name in outcomes])
     return "; ".join(
         [
-            f"{name}: {(price * 100):.1f}% prob"
-            if price is not None
-            else f"{name}: N/A"
+            (
+                f"{name}: {(price * 100):.1f}% prob"
+                if price is not None
+                else f"{name}: N/A"
+            )
             for name, price in zip(outcomes, prices)
         ]
     )
@@ -157,9 +159,11 @@ class PolymarketMarket(BaseMarket):
             slug=slug_val,
             description=safe_str(data.get("description")),
             outcomes=parsed_outcomes_list,
-            outcome_prices=parsed_outcome_prices_list
-            if any(p is not None for p in parsed_outcome_prices_list)
-            else None,
+            outcome_prices=(
+                parsed_outcome_prices_list
+                if any(p is not None for p in parsed_outcome_prices_list)
+                else None
+            ),
             formatted_outcomes=formatted_outcomes_str,
             url=market_url,
             total_volume=total_volume,
@@ -169,9 +173,11 @@ class PolymarketMarket(BaseMarket):
             updated_at=BaseMarket.parse_datetime_flexible(data.get("updatedAt")),
             active=bool(data.get("active", False)),
             closed=bool(data.get("closed", False)),
-            resolution_source=safe_str(data.get("resolutionSource"))
-            if data.get("resolutionSource")
-            else None,
+            resolution_source=(
+                safe_str(data.get("resolutionSource"))
+                if data.get("resolutionSource")
+                else None
+            ),
             raw_market_type=safe_str(
                 data.get("category")
             ),  # Assuming 'category' might be 'Sports', 'Politics' etc. or sometimes 'Binary'
@@ -201,9 +207,11 @@ class PolymarketMarket(BaseMarket):
             id=self.id,
             question=self.question,
             outcomes=self.outcomes,
-            outcome_probabilities=self.outcome_prices
-            if self.outcome_prices
-            else [None] * len(self.outcomes),
+            outcome_probabilities=(
+                self.outcome_prices
+                if self.outcome_prices
+                else [None] * len(self.outcomes)
+            ),
             formatted_outcomes=self.formatted_outcomes,
             url=self.url,
             published_at=self.created_at,  # Use created_at as published_at
