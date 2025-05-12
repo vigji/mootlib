@@ -4,22 +4,16 @@ A library for scraping and analyzing forecasting markets.
 
 ## Requirements
 
-- Python 3.12 or higher
+- Python 3.11 or higher
 - uv (for dependency management)
 
 ## Installation
 
-### Using pip
-
-```bash
-pip install mootlib
-```
-
-### From source
+### Local Development Installation
 
 1. Clone the repository
 ```bash
-git clone https://github.com/yourusername/mootlib.git
+git clone https://github.com/vigji/mootlib.git
 cd mootlib
 ```
 
@@ -28,38 +22,34 @@ cd mootlib
 pip install uv
 ```
 
-3. Create virtual environment and install dependencies:
+3. Create and activate a virtual environment:
 ```bash
 uv venv
 source .venv/bin/activate  # On Unix/macOS
 # or
 .venv\Scripts\activate     # On Windows
+```
 
-uv pip install -e ".[dev]"  # Install with development dependencies
+4. Install the package in editable mode with development dependencies:
+```bash
+uv pip install -e ".[dev]"
 ```
 
 The virtual environment will be created in the `.venv` directory inside your project.
 
+### Using pip (once published)
+
+```bash
+pip install mootlib
+```
+
 ## Development
 
-This project uses uv for fast, reliable dependency management. All dependencies are managed in a local virtual environment within the project directory.
+This project uses modern Python tooling for development:
 
-### Setup
-
-1. Install uv if you haven't already:
-```bash
-pip install uv
-```
-
-2. Create virtual environment and install dependencies:
-```bash
-uv venv
-source .venv/bin/activate  # On Unix/macOS
-# or
-.venv\Scripts\activate     # On Windows
-
-uv pip install -e ".[dev]"
-```
+- Ruff for formatting and linting (includes functionality from black, isort, flake8, and many other tools)
+- MyPy for type checking
+- Pytest for testing
 
 ### Running Tests
 
@@ -69,20 +59,19 @@ pytest
 
 ### Code Quality
 
-We use several tools to maintain code quality:
+We use Ruff as an all-in-one solution for code quality:
 
-- Black and Ruff for code formatting:
+- Format code:
 ```bash
-black .
 ruff format .
 ```
 
-- Ruff for linting (includes isort, flake8, and many other checks):
+- Lint code (includes many checks like imports, style, complexity, etc.):
 ```bash
 ruff check .
 ```
 
-- MyPy for type checking:
+- Type checking with MyPy:
 ```bash
 mypy mootlib tests
 ```
@@ -90,12 +79,15 @@ mypy mootlib tests
 ### Code Style
 
 This project follows these code style guidelines:
-- Maximum line length of 88 characters (enforced by Black and Ruff)
+- Maximum line length of 88 characters (enforced by Ruff)
 - Double quotes for strings
 - Type hints for all functions
-- Docstrings for complex functions
+- Google-style docstrings for complex functions
 - Automatic import sorting with Ruff
 - Strict linting rules enforced by Ruff
+- Pathlib preferred over os.path for file operations
+- Loops preferred over repeated operations
+- Classes used sparingly and only for complex data structures
 
 ## License
 

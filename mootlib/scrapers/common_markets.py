@@ -35,17 +35,13 @@ class PooledMarket:
 
 
 class BaseMarket(ABC):
-    """
-    Abstract base class for platform-specific market data classes.
+    """Abstract base class for platform-specific market data classes.
     Ensures that each platform-specific market can be converted to a PooledMarket.
     """
 
     @abstractmethod
     def to_pooled_market(self) -> PooledMarket:
-        """
-        Converts the platform-specific market data to the common PooledMarket format.
-        """
-        pass
+        """Converts the platform-specific market data to the common PooledMarket format."""
 
     @classmethod
     def parse_datetime_flexible(cls, dt_str: str | None) -> datetime | None:
@@ -79,10 +75,9 @@ class BaseMarket(ABC):
             else:
                 # Try ISO format for naive datetime (e.g. fromisoformat handles
                 # '2023-10-26T00:00:00')
-                dt_obj = datetime.fromisoformat(dt_str)
+                return datetime.fromisoformat(dt_str)
                 # If it was truly naive, it remains naive.
                 # If it needs to be UTC, caller should specify.
-                return dt_obj
         except ValueError:
             # Fallback for other common formats if needed
             # Example: '2021-07-20 16:00:00' (less common in APIs)
@@ -94,14 +89,11 @@ class BaseMarket(ABC):
 
 
 class BaseScraper(ABC):
-    """
-    Abstract base class for platform-specific scrapers.
-    """
+    """Abstract base class for platform-specific scrapers."""
 
     @abstractmethod
     async def fetch_markets(self, only_open: bool = True, **kwargs) -> list[Any]:
-        """
-        Fetches markets from the specific platform.
+        """Fetches markets from the specific platform.
 
         Args:
             only_open: If True, fetches only open/active markets.
@@ -110,13 +102,11 @@ class BaseScraper(ABC):
         Returns:
             A list of platform-specific market objects.
         """
-        pass
 
     async def get_pooled_markets(
-        self, only_open: bool = True, **kwargs
+        self, only_open: bool = True, **kwargs,
     ) -> list[PooledMarket]:
-        """
-        Fetches markets and converts them to the PooledMarket format.
+        """Fetches markets and converts them to the PooledMarket format.
 
         Args:
             only_open: If True, fetches only open/active markets.
@@ -126,25 +116,17 @@ class BaseScraper(ABC):
             A list of PooledMarket objects.
         """
         platform_specific_markets = await self.fetch_markets(
-            only_open=only_open, **kwargs
+            only_open=only_open, **kwargs,
         )
         pooled_markets = []
         for market in platform_specific_markets:
             if hasattr(market, "to_pooled_market") and callable(
-                market.to_pooled_market
+                market.to_pooled_market,
             ):
                 try:
                     pooled_markets.append(market.to_pooled_market())
-                except Exception as e:
-                    market_id = getattr(market, "id", "unknown_id")
-                    print(
-                        f"Warning: Could not convert market {market_id} to"
-                        f"PooledMarket: {e}"
-                    )
+                except Exception:
+                    getattr(market, "id", "unknown_id")
             else:
-                market_id = getattr(market, "id", "unknown_id")
-                print(
-                    f"Warning: Market object {market_id} of type {type(market)}"
-                    f" does not have a to_pooled_market method."
-                )
+                getattr(market, "id", "unknown_id")
         return pooled_markets

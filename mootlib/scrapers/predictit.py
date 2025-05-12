@@ -2,7 +2,6 @@ import asyncio
 import json
 import time
 from dataclasses import dataclass, field
-from pprint import pprint  # For main example
 from typing import Any
 
 import aiohttp
@@ -112,7 +111,7 @@ class PredictItMarket(BaseMarket):
                 [
                     f"{o}: {(p * 100):.1f}%" if p is not None else f"{o}: N/A"
                     for o, p in zip(self.outcomes, self.outcome_prices, strict=False)
-                ]
+                ],
             )
         else:
             self.formatted_outcomes = "N/A"
@@ -152,7 +151,7 @@ class PredictItMarket(BaseMarket):
             formatted_outcomes=self.formatted_outcomes,
             url=self.url,
             published_at=BaseMarket.parse_datetime_flexible(
-                self.api_timestamp
+                self.api_timestamp,
             ),  # Using API timestamp as proxy
             source_platform="PredictIt",
             volume=None,  # No volume directly
@@ -167,13 +166,13 @@ class PredictItMarket(BaseMarket):
 class PredictItScraper(BaseScraper):
     API_URL = "https://www.predictit.org/api/marketdata/all/"
 
-    def __init__(self, timeout: int = 15):
+    def __init__(self, timeout: int = 15) -> None:
         self.timeout = timeout
         self.session = None
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession(
-            headers={"User-Agent": "Mozilla/5.0 (compatible; PythonScraper/1.0)"}
+            headers={"User-Agent": "Mozilla/5.0 (compatible; PythonScraper/1.0)"},
         )
         return self
 
@@ -185,25 +184,22 @@ class PredictItScraper(BaseScraper):
         """Fetch raw data from PredictIt API."""
         if not self.session:
             self.session = aiohttp.ClientSession(
-                headers={"User-Agent": "Mozilla/5.0 (compatible; PythonScraper/1.0)"}
+                headers={"User-Agent": "Mozilla/5.0 (compatible; PythonScraper/1.0)"},
             )
 
         try:
             async with self.session.get(self.API_URL, timeout=self.timeout) as response:
                 response.raise_for_status()
                 return await response.json()
-        except aiohttp.ClientError as e:
-            print(f"Error fetching data from PredictIt API: {e}")
+        except aiohttp.ClientError:
             return None
-        except json.JSONDecodeError as e:
-            print(f"Error decoding JSON from PredictIt API: {e}")
+        except json.JSONDecodeError:
             return None
 
     async def fetch_markets(
-        self, only_open: bool = True, **kwargs: Any
+        self, only_open: bool = True, **kwargs: Any,
     ) -> list[PredictItMarket]:
-        """
-        Fetch markets from PredictIt API.
+        """Fetch markets from PredictIt API.
 
         Args:
             only_open: If True, returns only open markets.
@@ -227,54 +223,36 @@ class PredictItScraper(BaseScraper):
                         parsed_markets.append(market_obj)
                 else:
                     parsed_markets.append(market_obj)
-            except Exception as e:
-                print(
-                    f"Error parsing PredictIt market ID"
-                    f" {market_data_dict.get('id', 'Unknown')}: {e}"
-                )
+            except Exception:
+                pass
 
         return parsed_markets
 
 
-async def main():
-    print("Starting PredictItScraper example...")
+async def main() -> None:
     scraper = PredictItScraper()
 
     fetch_only_open_markets = True
-    print(
-        f"Fetching {'open' if fetch_only_open_markets else 'all'} markets"
-        "from PredictIt..."
-    )
-    start_time = time.time()
+    time.time()
 
     predictit_market_list = await scraper.fetch_markets(
-        only_open=fetch_only_open_markets
+        only_open=fetch_only_open_markets,
     )
-    end_time = time.time()
+    time.time()
 
-    print(f"Fetching took {end_time - start_time:.2f} seconds.")
-    print(f"Fetched {len(predictit_market_list)} PredictIt markets.")
 
     if predictit_market_list:
         # Example of getting pooled markets using the BaseScraper method
-        print(
-            "\nConverting fetched PredictIt markets to PooledMarket"
-            "format using get_pooled_markets..."
-        )
         pooled_markets = await scraper.get_pooled_markets(
-            only_open=fetch_only_open_markets
+            only_open=fetch_only_open_markets,
         )
-        print(f"Converted {len(pooled_markets)} markets to PooledMarket format.")
 
         if pooled_markets:
-            print("Details of the first pooled market (PredictIt):")
-            pprint(pooled_markets[0].__dict__)
+            pass
         else:
-            print(
-                "No PredictIt markets successfully converted to PooledMarket format."
-            )
+            pass
     else:
-        print("No markets were fetched from PredictIt.")
+        pass
 
 
 if __name__ == "__main__":

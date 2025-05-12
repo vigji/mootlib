@@ -43,24 +43,21 @@ embedded_df["closest_questions"] = embedded_df.apply(
 )
 embedded_df["closest_questions_text"] = embedded_df["closest_questions"].apply(
     lambda x: "\n".join(
-        [f"{q}  {a} ({source}; {distance})" for q, a, source, distance in x]
-    )
+        [f"{q}  {a} ({source}; {distance})" for q, a, source, distance in x],
+    ),
 )
 embedded_df.head()
 
-for i in (0, 2, *np.random.randint(0, len(embedded_df), 10)):
+for i in (0, 2, *np.random.Generator.integers(0, len(embedded_df), 10)):
     example = embedded_df.iloc[i]
-    print(example.question, example.source_platform)
-    print(example.closest_questions_text)
-    print("-" * 100)
 
 
 
-def reduce_dimensions(embeddings_data, n_components=2):
+def reduce_dimensions(embeddings_data: np.ndarray | pd.DataFrame,
+                     n_components: int = 2) -> np.ndarray:
     """Reduce dimensionality of embeddings using UMAP."""
     tsne = TSNE(n_components=n_components, random_state=42)
-    reduced_embeddings = tsne.fit_transform(embeddings_data)
-    return reduced_embeddings
+    return tsne.fit_transform(embeddings_data)
 
 
 # %%

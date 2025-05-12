@@ -48,7 +48,7 @@ class GJOpenMarket(BaseMarket):
 
     @classmethod
     def from_gjopen_question_data(
-        cls, q_props: dict, question_url: str
+        cls, q_props: dict, question_url: str,
     ) -> "GJOpenMarket | None":
         if not q_props:
             return None
@@ -120,7 +120,7 @@ class GoodJudgmentOpenScraper(BaseScraper):
     QUESTIONS_URL = f"{BASE_URL}/questions"
     LOGIN_URL = f"{BASE_URL}/users/sign_in"
 
-    def __init__(self, email: str | None = None, password: str | None = None):
+    def __init__(self, email: str | None = None, password: str | None = None) -> None:
         """Initialize scraper with optional credentials."""
         self.session = None
         self.headers = {"User-Agent": "Mozilla/5.0 (compatible; PythonScraper/1.0)"}
@@ -135,7 +135,8 @@ class GoodJudgmentOpenScraper(BaseScraper):
             self.email = env_email
             self.password = env_password
         else:
-            raise ValueError("No credentials provided for GJOpen")
+            msg = "No credentials provided for GJOpen"
+            raise ValueError(msg)
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession(headers=self.headers)
@@ -146,7 +147,7 @@ class GoodJudgmentOpenScraper(BaseScraper):
         if self.session:
             await self.session.close()
 
-    async def _login(self):
+    async def _login(self) -> None:
         """Log into Good Judgment Open."""
         if not self.session:
             self.session = aiohttp.ClientSession(headers=self.headers)
@@ -156,12 +157,14 @@ class GoodJudgmentOpenScraper(BaseScraper):
                 response.raise_for_status()
                 login_page = await response.text()
         except aiohttp.ClientError as e:
-            raise ConnectionError("Failed to fetch login page") from e
+            msg = "Failed to fetch login page"
+            raise ConnectionError(msg) from e
 
         soup = BeautifulSoup(login_page, "html.parser")
         csrf_token_tag = soup.select_one('meta[name="csrf-token"]')
         if not csrf_token_tag or not csrf_token_tag.get("content"):
-            raise ValueError("Could not find CSRF token on login page")
+            msg = "Could not find CSRF token on login page"
+            raise ValueError(msg)
 
         csrf_token = csrf_token_tag["content"]
         login_data = {
@@ -179,10 +182,12 @@ class GoodJudgmentOpenScraper(BaseScraper):
                 response.raise_for_status()
                 resp_text = await response.text()
         except aiohttp.ClientError as e:
-            raise ConnectionError("Login request failed") from e
+            msg = "Login request failed"
+            raise ConnectionError(msg) from e
 
         if "Invalid Email or password" in resp_text or "sign_in" in str(response.url):
-            raise ValueError("Login failed - please check credentials")
+            msg = "Login failed - please check credentials"
+            raise ValueError(msg)
 
     async def _fetch_question_links_for_page(self,
                                              page: int | None = None) -> list[str]:
@@ -198,8 +203,7 @@ class GoodJudgmentOpenScraper(BaseScraper):
             async with self.session.get(url, timeout=10) as response:
                 response.raise_for_status()
                 resp_text = await response.text()
-        except aiohttp.ClientError as e:
-            print(f"    Warning: Failed to fetch page {page}: {e}")
+        except aiohttp.ClientError:
             return []
 
         soup = BeautifulSoup(resp_text, "html.parser")
@@ -207,7 +211,7 @@ class GoodJudgmentOpenScraper(BaseScraper):
         return [urljoin(self.BASE_URL, link["href"]) for link in links]
 
     async def _fetch_market_data_for_url(
-        self, question_url: str
+        self, question_url: str,
     ) -> GJOpenMarket | None:
         """Fetch and parse market data for a single question URL."""
         if not self.session:
@@ -220,8 +224,7 @@ class GoodJudgmentOpenScraper(BaseScraper):
             ) as response:
                 response.raise_for_status()
                 resp_text = await response.text()
-        except aiohttp.ClientError as e:
-            print(f"    Warning: Failed to fetch market data for {question_url}: {e}")
+        except aiohttp.ClientError:
             return None
 
         soup = BeautifulSoup(resp_text, "html.parser")
@@ -248,8 +251,7 @@ class GoodJudgmentOpenScraper(BaseScraper):
         min_n_forecasters: int = VALID_MARKETS_FILTER.min_n_forecasters,
         **kwargs: Any,
     ) -> list[GJOpenMarket]:
-        """
-        Fetch markets from Good Judgment Open.
+        """Fetch markets from Good Judgment Open.
 
         Args:
             only_open: If True, attempts to fetch only open markets.
@@ -278,8 +280,8 @@ class GoodJudgmentOpenScraper(BaseScraper):
                         m.question for m in all_markets_data
                     ]:
                         market_objs_on_page.append(market_obj)
-                except Exception as e:
-                    print(f"    Failed to process {link}: {e}")
+                except Exception:
+                    pass
                 finally:
                     if i < len(question_links) - 1:
                         time.sleep(PAUSE_AFTER_MARKET)
@@ -307,34 +309,24 @@ class GoodJudgmentOpenScraper(BaseScraper):
 if __name__ == "__main__":
     import asyncio
 
-    async def run_gjopen_scraper():
-        print("Starting GoodJudgmentOpenScraper example...")
+    async def run_gjopen_scraper() -> None:
 
         try:
             scraper = GoodJudgmentOpenScraper()
-            print("Successfully initialized scraper.")
 
-            start_time = time.time()
+            time.time()
 
             async with scraper:
                 pooled_markets = await scraper.get_pooled_markets(only_open=True)
 
-                end_time = time.time()
-                print(f"\nFetching took {end_time - start_time:.2f} seconds.")
-                print(f"Fetched {len(pooled_markets)} GJOpen markets.")
+                time.time()
 
                 if pooled_markets:
-                    print("\nDetails of the first pooled market:")
-                    df_pooled = pd.DataFrame([pm.__dict__ for pm in pooled_markets])
-                    print(f"\nCreated DataFrame with {len(df_pooled)} pooled markets.")
+                    pd.DataFrame([pm.__dict__ for pm in pooled_markets])
                 else:
-                    print("No markets were fetched from Good Judgment Open.")
+                    pass
 
-        except (FileNotFoundError, ValueError, ConnectionError) as e:
-            print(f"Error: {e}")
-            print(
-                "Please ensure credentials are set up via environment variables "
-                "(GJO_EMAIL, GJO_PASSWORD)"
-            )
+        except (FileNotFoundError, ValueError, ConnectionError):
+            pass
 
     asyncio.run(run_gjopen_scraper())

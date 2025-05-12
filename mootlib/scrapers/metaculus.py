@@ -74,7 +74,7 @@ class MetaculusMarket(BaseMarket):
 class MyMetaculusApi(MetaculusApi):
     @classmethod
     async def grab_all_questions_with_filter(
-        cls, filter: ApiFilter = None
+        cls, filter: ApiFilter = None,
     ) -> list[MetaculusQuestion]:
         # This is reachable - the filter parameter is optional and can be None
         if filter is None:
@@ -98,7 +98,7 @@ class MyMetaculusApi(MetaculusApi):
 
 
 class MetaculusScraper(BaseScraper):
-    def __init__(self, filter: ApiFilter | None = None):
+    def __init__(self, filter: ApiFilter | None = None) -> None:
         self.filter = filter or DEFAULT_FILTER
         self.api = MyMetaculusApi  # Use the existing MyMetaculusApi class
 
@@ -108,13 +108,11 @@ class MetaculusScraper(BaseScraper):
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         """Async context manager exit - nothing to clean up for Metaculus."""
-        pass
 
     async def fetch_markets(
-        self, only_open: bool = True, **kwargs: Any
+        self, only_open: bool = True, **kwargs: Any,
     ) -> list[MetaculusMarket]:
-        """
-        Fetch markets from Metaculus using the existing MyMetaculusApi logic.
+        """Fetch markets from Metaculus using the existing MyMetaculusApi logic.
 
         Args:
             only_open: If True, only fetch open markets (handled via filter)
@@ -127,33 +125,25 @@ class MetaculusScraper(BaseScraper):
             self.filter.allowed_statuses = ["open"]
 
         questions = await self.api.grab_all_questions_with_filter(self.filter)
-        markets = [MetaculusMarket.from_metaculus_question(q) for q in questions]
-        return markets
+        return [MetaculusMarket.from_metaculus_question(q) for q in questions]
 
 
-async def main():
-    print("Starting MetaculusScraper example...")
-    start_time = time.time()
+async def main() -> None:
+    time.time()
 
     async with MetaculusScraper() as scraper:
         markets = await scraper.get_pooled_markets(only_open=True)
 
-        end_time = time.time()
-        print(f"Fetching took {end_time - start_time:.2f} seconds.")
-        print(f"Fetched {len(markets)} Metaculus markets.")
+        time.time()
 
         if markets:
-            print("\nDetails of the first pooled market:")
-            pprint(markets[0].__dict__)
 
-            df_pooled = pd.DataFrame([pm.__dict__ for pm in markets])
-            print(f"\nCreated DataFrame with {len(df_pooled)} pooled markets.")
+            pd.DataFrame([pm.__dict__ for pm in markets])
         else:
-            print("No markets were fetched from Metaculus.")
+            pass
 
 
 if __name__ == "__main__":
     import time
-    from pprint import pprint
 
     asyncio.run(main())

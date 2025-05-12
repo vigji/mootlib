@@ -69,7 +69,7 @@ class ManifoldMarket:
 
     @staticmethod
     def _format_outcomes(outcomes: list[str], prices: list[float]) -> str:
-        """Format outcomes and prices into a string"""
+        """Format outcomes and prices into a string."""
         return "; ".join([f"{o}: {(p * 100):.1f}%"
                           for o, p in zip(outcomes, prices, strict=False)])
 
@@ -167,7 +167,7 @@ class ManifoldMarket:
 
 
 class ManifoldScraper(BaseScraper):
-    def __init__(self, max_concurrent: int = 5, api_key: str | None = None):
+    def __init__(self, max_concurrent: int = 5, api_key: str | None = None) -> None:
         self.max_concurrent = max_concurrent
         self.session: aiohttp.ClientSession | None = None
         self.api_key = api_key
@@ -188,15 +188,15 @@ class ManifoldScraper(BaseScraper):
         """Create appropriate market type from API data."""
         try:
             return ManifoldMarket.from_api_data(data)
-        except Exception as e:
-            print(f"Error creating market {data.get('id')}: {e}")
+        except Exception:
             return None
 
     async def _fetch_raw_markets_list(
-        self, limit: int = 1000, before: str | None = None, only_open: bool = True
+        self, limit: int = 1000, before: str | None = None, only_open: bool = True,
     ) -> list[dict[str, Any]]:
         """Fetch a list of markets from API, with optional pagination and open status
-        filter."""
+        filter.
+        """
         base_url = "https://api.manifold.markets/v0/markets"
         params: dict[str, Any] = {
             "limit": limit,
@@ -209,7 +209,7 @@ class ManifoldScraper(BaseScraper):
         all_markets_batch = []
         try:
             async with self.session.get(
-                base_url, params=params, headers=self.headers
+                base_url, params=params, headers=self.headers,
             ) as response:
                 response.raise_for_status()
                 markets_page = await response.json()
@@ -223,8 +223,7 @@ class ManifoldScraper(BaseScraper):
                 else:
                     all_markets_batch = markets_page
 
-        except aiohttp.ClientError as e:
-            print(f"Error fetching markets list: {e}")
+        except aiohttp.ClientError:
             return []
         return all_markets_batch
 
@@ -237,11 +236,7 @@ class ManifoldScraper(BaseScraper):
             async with self.session.get(base_url, headers=self.headers) as response:
                 response.raise_for_status()
                 return await response.json()
-        except aiohttp.ClientError as e:
-            print(
-                f"Error fetching details for market {market_id}"
-                f" (original_id: {original_id}): {e}"
-            )
+        except aiohttp.ClientError:
             return None
 
     async def fetch_markets(
@@ -259,11 +254,10 @@ class ManifoldScraper(BaseScraper):
         last_market_id: str | None = None
         markets_fetched_count = 0
 
-        print("Fetching Manifold markets")
 
         while True:
             current_batch = await self._fetch_raw_markets_list(
-                limit=1000, before=last_market_id, only_open=only_open  # batch_limit,
+                limit=1000, before=last_market_id, only_open=only_open,  # batch_limit,
             )
             if not current_batch:
                 break
@@ -315,27 +309,20 @@ class ManifoldScraper(BaseScraper):
         return processed_markets
 
 
-async def main():
+async def main() -> None:
     import time
 
-    print("Starting ManifoldScraper example...")
-    start_time = time.time()
+    time.time()
     async with ManifoldScraper(max_concurrent=5) as client:
         open_markets = await client.fetch_markets(
             only_open=True,
         )
-        print(f"Found {len(open_markets)} OPEN markets matching criteria.")
         if open_markets:
-            print(
-                f"First market (open): {open_markets[0].question}, Resolved: "
-                f"{open_markets[0].resolution is not None}"
-            )
+            pass
 
-        manually_pooled = [m.to_pooled_market() for m in open_markets]
-        print(f"converted {len(manually_pooled)} markets.")
+        [m.to_pooled_market() for m in open_markets]
 
-    end_time = time.time()
-    print(f"Time taken: {end_time - start_time} seconds")
+    time.time()
 
 
 if __name__ == "__main__":

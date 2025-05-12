@@ -28,7 +28,7 @@ def preprocess_questions(questions_list):
 def _embed_all_questions(questions_list):
     questions_list = preprocess_questions(questions_list)
     embeddings = openai.embeddings.create(
-        model=model, input=questions_list, encoding_format="float"
+        model=model, input=questions_list, encoding_format="float",
     )
     return np.array([embedding.embedding for embedding in embeddings.data])
 
@@ -39,7 +39,7 @@ def _embed_in_chunks(questions_list, chunk_size=200):
     for i in tqdm(range(0, len(questions_list), chunk_size)):
         chunk = questions_list[i : i + chunk_size]
         embeddings = openai.embeddings.create(
-            model=model, input=chunk, encoding_format="float"
+            model=model, input=chunk, encoding_format="float",
         )
         embeddings_list.extend(embeddings.data)
 
@@ -66,7 +66,6 @@ def embed_list_with_cache(questions_list, cache_folder=None, chunk_size=None):
     )
 
     if cache_file.exists():
-        print(f"Loading embeddings from cache file {cache_file}")
         return np.load(cache_file)
     else:
         embeddings_array = embed_list(questions_list, chunk_size)
@@ -77,14 +76,11 @@ def embed_list_with_cache(questions_list, cache_folder=None, chunk_size=None):
 def embed_questions_df(question_df, question_column="question", cache_folder=None):
     questions_list = question_df[question_column].to_list()
     n_questions = len(questions_list)
-    if n_questions > 1024:
-        chunk_size = 1024
-    else:
-        chunk_size = None
+    chunk_size = 1024 if n_questions > 1024 else None
 
     sanitized_questions = [q.strip() for q in questions_list]
     embeddings_array = embed_list_with_cache(
-        sanitized_questions, chunk_size=chunk_size, cache_folder=cache_folder
+        sanitized_questions, chunk_size=chunk_size, cache_folder=cache_folder,
     )
     return pd.DataFrame(embeddings_array, index=question_df.index)
 
@@ -92,7 +88,7 @@ def embed_questions_df(question_df, question_column="question", cache_folder=Non
 def get_distance_matrix(combined_df):
     """Create a distance matrix of the embeddings."""
     embeddings = combined_df.drop(
-        ["source_platform", "question", "formatted_outcomes"], axis=1
+        ["source_platform", "question", "formatted_outcomes"], axis=1,
     )
     cosine_similarity_matrix = cosine_similarity(embeddings)
     distance_matrix = 1 - cosine_similarity_matrix
@@ -132,5 +128,4 @@ if __name__ == "__main__":
     ] * 20
     # a = embed_list(test_questions)
     a = embed_list(test_questions, chunk_size=10)
-    print(a)
     # b = embed_list_with_cache(test_questions, Path(__file__).parent / "cache")

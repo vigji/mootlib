@@ -7,13 +7,11 @@ from umap import UMAP
 def reduce_dimensions(embeddings_df, n_components=2):
     """Reduce dimensionality of embeddings using UMAP."""
     umap = UMAP(n_components=n_components, random_state=42)
-    reduced_embeddings = umap.fit_transform(embeddings_df)
-    return reduced_embeddings
+    return umap.fit_transform(embeddings_df)
 
 
 def create_visualization(df_to_viz):
     """Create an interactive plotly visualization of the embeddings."""
-
     # Reduce dimensions
     reduced_embeddings = reduce_dimensions(
         df_to_viz.drop(
@@ -25,7 +23,7 @@ def create_visualization(df_to_viz):
                 "formatted_outcomes",
             ],
             axis=1,
-        )
+        ),
     )
 
     # Create visualization DataFrame
@@ -37,7 +35,7 @@ def create_visualization(df_to_viz):
     viz_df["closest_questions"] = df_to_viz["closest_questions"]
     viz_df["formatted_outcomes"] = df_to_viz["formatted_outcomes"]
     viz_df["closest_questions_formatted"] = viz_df["closest_questions"].apply(
-        lambda x: "<br>".join([f"• {q}" for q in x])
+        lambda x: "<br>".join([f"• {q}" for q in x]),
     )
 
     # Create the plot
@@ -65,14 +63,7 @@ def create_visualization(df_to_viz):
 
     # Customize hover template
     fig.update_traces(
-        hovertemplate="<br>".join(
-            [
-                "Question: %{customdata[0]} (%{customdata[1]})",
-                "Outcomes: %{customdata[2]}",
-                "Closest Questions:<br>%{customdata[3]}<br>",
-                "<extra></extra>",
-            ]
-        )
+        hovertemplate="Question: %{customdata[0]} (%{customdata[1]})<br>Outcomes: %{customdata[2]}<br>Closest Questions:<br>%{customdata[3]}<br><br><extra></extra>",
     )
 
     # Update layout
@@ -95,6 +86,6 @@ if __name__ == "__main__":
 
     # Create and show the visualization
     fig = create_visualization(
-        meta_embeddings_df, poly_embeddings_df, meta_questions_df
+        meta_embeddings_df, poly_embeddings_df, meta_questions_df,
     )
     fig.show()

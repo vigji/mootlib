@@ -41,35 +41,27 @@ def save_markets_to_cache(markets: list[PooledMarket], platform: str) -> Path:
 
 
 async def fetch_platform_markets(
-    scraper, only_open: bool
+    scraper, only_open: bool,
 ) -> tuple[str, list[PooledMarket]]:
     """Fetch markets from a single platform."""
     platform_name = scraper.__class__.__name__.replace("Scraper", "")
-    print(f"\nFetching markets from {platform_name}...")
-    start_time = time.time()
+    time.time()
 
     try:
         async with scraper:  # Use async context manager for proper session handling
             markets = await scraper.get_pooled_markets(only_open=only_open)
 
             # Save to cache
-            cache_file = save_markets_to_cache(markets, platform_name)
-            print(f"Saved {len(markets)} markets to cache: {cache_file}")
+            save_markets_to_cache(markets, platform_name)
 
-            end_time = time.time()
-            print(
-                f"Fetched {len(markets)} markets from {platform_name} in"
-                f" {end_time - start_time:.2f} seconds"
-            )
+            time.time()
             return platform_name, markets
-    except Exception as e:
-        print(f"Error fetching from {platform_name}: {e}")
+    except Exception:
         return platform_name, []
 
 
 async def fetch_all_markets(only_open: bool = True) -> list[PooledMarket]:
-    """
-    Fetch markets from all available platforms in parallel.
+    """Fetch markets from all available platforms in parallel.
 
     Args:
         only_open: If True, fetches only open markets.
@@ -95,7 +87,6 @@ async def fetch_all_markets(only_open: bool = True) -> list[PooledMarket]:
     all_markets: list[PooledMarket] = []
     for result in results:
         if isinstance(result, Exception):
-            print(f"Error in parallel fetch: {result}")
             continue
         platform_name, markets = result
         all_markets.extend(markets)
@@ -104,8 +95,7 @@ async def fetch_all_markets(only_open: bool = True) -> list[PooledMarket]:
 
 
 def create_markets_dataframe(markets: list[PooledMarket]) -> pd.DataFrame:
-    """
-    Convert a list of PooledMarket objects to a pandas DataFrame.
+    """Convert a list of PooledMarket objects to a pandas DataFrame.
 
     Args:
         markets: List of PooledMarket objects.
@@ -118,7 +108,7 @@ def create_markets_dataframe(markets: list[PooledMarket]) -> pd.DataFrame:
     for market in markets:
         market_dict = market.__dict__.copy()
         market_dict.pop(
-            "raw_market_data", None
+            "raw_market_data", None,
         )  # Remove raw data to keep DataFrame clean
         market_dicts.append(market_dict)
 
@@ -132,20 +122,18 @@ def create_markets_dataframe(markets: list[PooledMarket]) -> pd.DataFrame:
 
             # Then convert all to timezone-naive
             df["published_at"] = df["published_at"].apply(
-                lambda x: x.tz_localize(None) if x.tz is not None else x
+                lambda x: x.tz_localize(None) if x.tz is not None else x,
             )
 
             df = df.sort_values("published_at", ascending=False)
-        except Exception as e:
-            print(f"Warning: Error processing published_at column: {e}")
-            print("Continuing without sorting by published_at")
+        except Exception:
+            pass
 
     return df
 
 
-async def main():
-    print("Starting market aggregation from all platforms...")
-    start_time = time.time()
+async def main() -> None:
+    time.time()
 
     # Fetch markets from all platforms
     all_markets = await fetch_all_markets(only_open=True)
@@ -153,25 +141,16 @@ async def main():
     # Create DataFrame
     df = create_markets_dataframe(all_markets)
 
-    end_time = time.time()
-    print(f"\nTotal time: {end_time - start_time:.2f} seconds")
-    print(f"Total markets collected: {len(df)}")
+    time.time()
 
     # Print summary by platform
-    print("\nMarkets by platform:")
-    print(df["source_platform"].value_counts())
 
     # Save to CSV
     output_path = Path("data/combined_markets.csv")
     output_path.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(output_path, index=False)
-    print(f"\nSaved combined markets to {output_path}")
 
     # Print sample of the data
-    print("\nSample of combined markets:")
-    print(
-        df[["id", "question", "source_platform", "published_at", "is_resolved"]].head()
-    )
 
 
 if __name__ == "__main__":
