@@ -34,7 +34,7 @@ def save_markets_to_cache(markets: list[PooledMarket], platform: str) -> Path:
 
         market_dicts.append(market_dict)
 
-    with open(cache_file, "w") as f:
+    with cache_file.open("w") as f:
         json.dump(market_dicts, f, indent=2)
 
     return cache_file
@@ -114,34 +114,37 @@ def create_markets_dataframe(markets: list[PooledMarket]) -> pd.DataFrame:
         )  # Remove raw data to keep DataFrame clean
         market_dicts.append(market_dict)
 
-    df = pd.DataFrame(market_dicts)
-    df = df.drop_duplicates(subset=["question"])
+    all_markets_df = pd.DataFrame(market_dicts)
+    all_markets_df = all_markets_df.drop_duplicates(subset=["question"])
     # Handle published_at column if it exists
-    if "published_at" in df.columns:
+    if "published_at" in all_markets_df.columns:
         try:
             # First convert all to datetime, handling timezone-aware and naive
-            df["published_at"] = pd.to_datetime(df["published_at"])
+            all_markets_df["published_at"] = pd.to_datetime(
+                all_markets_df["published_at"]
+            )
 
             # Then convert all to timezone-naive
-            df["published_at"] = df["published_at"].apply(
+            all_markets_df["published_at"] = all_markets_df["published_at"].apply(
                 lambda x: x.tz_localize(None) if x.tz is not None else x,
             )
 
-            df = df.sort_values("published_at", ascending=False)
+            all_markets_df = all_markets_df.sort_values("published_at", ascending=False)
         except Exception:
             pass
 
-    return df
+    return all_markets_df
 
 
 async def main() -> None:
+    """Main function to run the market aggregation."""
     time.time()
 
     # Fetch markets from all platforms
     all_markets = await fetch_all_markets(only_open=True)
 
     # Create DataFrame
-    df = create_markets_dataframe(all_markets)
+    markets_df = create_markets_dataframe(all_markets)
 
     time.time()
 
@@ -150,7 +153,7 @@ async def main() -> None:
     # Save to CSV
     output_path = Path("data/combined_markets.csv")
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    df.to_csv(output_path, index=False)
+    markets_df.to_csv(output_path, index=False)
 
     # Print sample of the data
 

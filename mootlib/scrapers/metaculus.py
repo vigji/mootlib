@@ -24,6 +24,8 @@ DEFAULT_FILTER = ApiFilter(
 
 @dataclass
 class MetaculusMarket(BaseMarket):
+    """Metaculus market dataclass."""
+
     id: str
     question: str
     outcomes: list[str]
@@ -36,6 +38,7 @@ class MetaculusMarket(BaseMarket):
 
     @classmethod
     def from_metaculus_question(cls, question: MetaculusQuestion) -> "MetaculusMarket":
+        """Create a MetaculusMarket from a MetaculusQuestion."""
         prob = question.community_prediction_at_access_time
         if prob is None:
             prob = 0.5
@@ -53,6 +56,7 @@ class MetaculusMarket(BaseMarket):
         )
 
     def to_pooled_market(self) -> PooledMarket:
+        """Convert a MetaculusMarket to a PooledMarket."""
         return PooledMarket(
             id=self.id,
             question=self.question,
@@ -72,11 +76,16 @@ class MetaculusMarket(BaseMarket):
 
 
 class MyMetaculusApi(MetaculusApi):
+    """MyMetaculusApi is a subclass of MetaculusApi that adds a method to grab all
+    questions with a given filter.
+    """
+
     @classmethod
     async def grab_all_questions_with_filter(
         cls,
         filter: ApiFilter = None,
     ) -> list[MetaculusQuestion]:
+        """Grab all questions with a given filter."""
         # This is reachable - the filter parameter is optional and can be None
         if filter is None:
             filter = DEFAULT_FILTER
@@ -99,6 +108,8 @@ class MyMetaculusApi(MetaculusApi):
 
 
 class MetaculusScraper(BaseScraper):
+    """Scraper for Metaculus markets."""
+
     def __init__(self, filter: ApiFilter | None = None) -> None:
         self.filter = filter or DEFAULT_FILTER
         self.api = MyMetaculusApi  # Use the existing MyMetaculusApi class
@@ -131,21 +142,20 @@ class MetaculusScraper(BaseScraper):
         return [MetaculusMarket.from_metaculus_question(q) for q in questions]
 
 
-async def main() -> None:
-    time.time()
-
-    async with MetaculusScraper() as scraper:
-        markets = await scraper.get_pooled_markets(only_open=True)
-
-        time.time()
-
-        if markets:
-            pd.DataFrame([pm.__dict__ for pm in markets])
-        else:
-            pass
-
-
 if __name__ == "__main__":
     import time
 
-    asyncio.run(main())
+    async def _main() -> None:
+        time.time()
+
+        async with MetaculusScraper() as scraper:
+            markets = await scraper.get_pooled_markets(only_open=True)
+
+            time.time()
+
+            if markets:
+                pd.DataFrame([pm.__dict__ for pm in markets])
+            else:
+                pass
+
+    asyncio.run(_main())

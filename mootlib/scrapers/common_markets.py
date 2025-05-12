@@ -6,6 +6,8 @@ from typing import Any
 
 @dataclass
 class MarketFilter:
+    """Dataclass for filtering markets."""
+
     min_n_forecasters: int | None = None
     min_comments_count: int | None = None
     min_volume: float | None = None
@@ -14,6 +16,8 @@ class MarketFilter:
 
 @dataclass
 class PooledMarket:
+    """Dataclass for a pooled market."""
+
     id: str  # Platform-prefixed ID, e.g., "gjopen_123", "polymarket_abc"
     question: str
     outcomes: list[str]  # ["Yes", "No"] or ["A", "B", "C"...]
@@ -41,10 +45,13 @@ class BaseMarket(ABC):
 
     @abstractmethod
     def to_pooled_market(self) -> PooledMarket:
-        """Converts the platform-specific market data to the common PooledMarket format."""
+        """Converts the platform-specific market data to the common
+        PooledMarket format.
+        """
 
     @classmethod
     def parse_datetime_flexible(cls, dt_str: str | None) -> datetime | None:
+        """Parse a datetime string from a variety of formats."""
         if not dt_str:
             return None
 

@@ -11,6 +11,8 @@ from mootlib.scrapers.common_markets import BaseMarket, BaseScraper, PooledMarke
 
 @dataclass
 class PredictItContract:
+    """PredictIt contract dataclass."""
+
     id: int
     name: str
     last_trade_price: float | None  # API can return null
@@ -19,6 +21,7 @@ class PredictItContract:
 
     @property
     def spread(self) -> float | None:
+        """Calculate the spread between the best buy and sell prices."""
         if self.best_buy_yes_cost is not None and self.best_sell_yes_cost is not None:
             val = self.best_buy_yes_cost - self.best_sell_yes_cost
             return val if val >= 0 else None  # Spread shouldn't be negative
@@ -26,6 +29,7 @@ class PredictItContract:
 
     @classmethod
     def from_api_data(cls, data: dict[str, Any]) -> "PredictItContract":
+        """Create PredictItContract from API data."""
         return cls(
             id=data["id"],
             name=data["name"],
@@ -37,6 +41,8 @@ class PredictItContract:
 
 @dataclass
 class PredictItMarket(BaseMarket):
+    """PredictIt market dataclass."""
+
     id: str  # Changed to str for "predictit_" prefix
     name: str  # This is the question
     url: str
@@ -118,6 +124,7 @@ class PredictItMarket(BaseMarket):
 
     @classmethod
     def from_api_data(cls, data: dict[str, Any]) -> "PredictItMarket":
+        """Create PredictItMarket from API data."""
         contracts_data = data.get("contracts", [])
         parsed_contracts = [PredictItContract.from_api_data(c) for c in contracts_data]
 
@@ -131,6 +138,7 @@ class PredictItMarket(BaseMarket):
         )
 
     def to_pooled_market(self) -> PooledMarket:
+        """Convert PredictItMarket to PooledMarket."""
         market_status_lower = self.status.lower() if self.status else ""
         is_res = market_status_lower == "closed"  # PredictIt uses "Closed"
 
@@ -163,6 +171,8 @@ class PredictItMarket(BaseMarket):
 
 
 class PredictItScraper(BaseScraper):
+    """Scraper for PredictIt markets."""
+
     API_URL = "https://www.predictit.org/api/marketdata/all/"
 
     def __init__(self, timeout: int = 15) -> None:
@@ -230,30 +240,30 @@ class PredictItScraper(BaseScraper):
         return parsed_markets
 
 
-async def main() -> None:
-    scraper = PredictItScraper()
+if __name__ == "__main__":
 
-    fetch_only_open_markets = True
-    time.time()
+    async def _main() -> None:
+        scraper = PredictItScraper()
 
-    predictit_market_list = await scraper.fetch_markets(
-        only_open=fetch_only_open_markets,
-    )
-    time.time()
+        fetch_only_open_markets = True
+        time.time()
 
-    if predictit_market_list:
-        # Example of getting pooled markets using the BaseScraper method
-        pooled_markets = await scraper.get_pooled_markets(
+        predictit_market_list = await scraper.fetch_markets(
             only_open=fetch_only_open_markets,
         )
+        time.time()
 
-        if pooled_markets:
-            pass
+        if predictit_market_list:
+            # Example of getting pooled markets using the BaseScraper method
+            pooled_markets = await scraper.get_pooled_markets(
+                only_open=fetch_only_open_markets,
+            )
+
+            if pooled_markets:
+                pass
+            else:
+                pass
         else:
             pass
-    else:
-        pass
 
-
-if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(_main())

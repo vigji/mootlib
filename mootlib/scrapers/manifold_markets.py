@@ -1,7 +1,7 @@
 import asyncio
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any
 
 import aiohttp
 from tqdm import tqdm
@@ -11,6 +11,8 @@ from mootlib.scrapers.common_markets import BaseScraper, PooledMarket
 
 @dataclass
 class ManifoldAnswer:
+    """Dataclass for Manifold answers."""
+
     text: str
     probability: float
     volume: float
@@ -19,6 +21,7 @@ class ManifoldAnswer:
 
     @classmethod
     def from_api_data(cls, data: dict[str, Any]) -> "ManifoldAnswer":
+        """Create a ManifoldAnswer from API data."""
         return cls(
             text=data["text"],
             probability=data.get("probability", 0),
@@ -62,6 +65,7 @@ class ManifoldMarket:
     answers: list[ManifoldAnswer] | None = None
 
     def get_url(self) -> str:
+        """Get the URL for the market."""
         return f"https://manifold.markets/{self.creator_username}/{self.slug}"
 
     def __str__(self) -> str:
@@ -75,7 +79,8 @@ class ManifoldMarket:
         )
 
     @classmethod
-    def from_api_data(cls, data: dict[str, Any]) -> Optional["ManifoldMarket"]:
+    def from_api_data(cls, data: dict[str, Any]) -> "ManifoldMarket":
+        """Create a ManifoldMarket from API data."""
         outcome_type = data["outcomeType"]
 
         outcomes = []
@@ -147,6 +152,7 @@ class ManifoldMarket:
         )
 
     def to_pooled_market(self) -> PooledMarket:
+        """Convert a ManifoldMarket to a PooledMarket."""
         is_res = bool(self.resolution and self.resolution != "MKT")
 
         return PooledMarket(
@@ -168,6 +174,8 @@ class ManifoldMarket:
 
 
 class ManifoldScraper(BaseScraper):
+    """Scraper for Manifold markets."""
+
     def __init__(self, max_concurrent: int = 5, api_key: str | None = None) -> None:
         self.max_concurrent = max_concurrent
         self.session: aiohttp.ClientSession | None = None
@@ -317,21 +325,16 @@ class ManifoldScraper(BaseScraper):
         return processed_markets
 
 
-async def main() -> None:
-    import time
-
-    time.time()
-    async with ManifoldScraper(max_concurrent=5) as client:
-        open_markets = await client.fetch_markets(
-            only_open=True,
-        )
-        if open_markets:
-            pass
-
-        [m.to_pooled_market() for m in open_markets]
-
-    time.time()
-
-
 if __name__ == "__main__":
-    asyncio.run(main())
+
+    async def _main() -> None:
+        async with ManifoldScraper(max_concurrent=5) as client:
+            open_markets = await client.fetch_markets(
+                only_open=True,
+            )
+            if open_markets:
+                pass
+
+                [m.to_pooled_market() for m in open_markets]
+
+    asyncio.run(_main())

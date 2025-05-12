@@ -27,12 +27,16 @@ LOGIN_URL = f"{BASE_URL}/users/sign_in"
 
 @dataclass
 class GJOpenAnswer:
+    """Dataclass for GJOpen answers."""
+
     name: str
     probability: float | None = None
 
 
 @dataclass
 class GJOpenMarket(BaseMarket):
+    """Dataclass for GJOpen markets."""
+
     id: str
     question: str
     published_at: str
@@ -52,6 +56,7 @@ class GJOpenMarket(BaseMarket):
         q_props: dict,
         question_url: str,
     ) -> "GJOpenMarket | None":
+        """Create a GJOpenMarket from GJOpen question data."""
         if not q_props:
             return None
 
@@ -92,6 +97,7 @@ class GJOpenMarket(BaseMarket):
         )
 
     def to_pooled_market(self) -> PooledMarket:
+        """Convert a GJOpenMarket to a PooledMarket."""
         outcome_names = [ans.name for ans in self.outcomes]
         outcome_probs = [ans.probability for ans in self.outcomes]
 
@@ -119,6 +125,10 @@ class GoodJudgmentOpenScraper(BaseScraper):
     BASE_URL = "https://www.gjopen.com"
     QUESTIONS_URL = f"{BASE_URL}/questions"
     LOGIN_URL = f"{BASE_URL}/users/sign_in"
+
+    MAX_PAGES = 20
+    PAUSE_AFTER_PAGE = 0.6
+    PAUSE_AFTER_MARKET = 0.7
 
     def __init__(self, email: str | None = None, password: str | None = None) -> None:
         """Initialize scraper with optional credentials."""
@@ -264,12 +274,11 @@ class GoodJudgmentOpenScraper(BaseScraper):
         Returns:
             A list of GJOpenMarket objects.
         """
-        MAX_PAGES = 20
-        PAUSE_AFTER_PAGE = kwargs.get("pause_after_page", 0.6)
-        PAUSE_AFTER_MARKET = kwargs.get("pause_after_market", 0.7)
         all_markets_data: list[GJOpenMarket] = []
 
-        for page_num in tqdm(range(1, MAX_PAGES + 1), desc="Scraping GJOpen pages"):
+        for page_num in tqdm(
+            range(1, self.MAX_PAGES + 1), desc="Scraping GJOpen pages"
+        ):
             question_links = await self._fetch_question_links_for_page(page_num)
             if not question_links:
                 break
@@ -286,7 +295,7 @@ class GoodJudgmentOpenScraper(BaseScraper):
                     pass
                 finally:
                     if i < len(question_links) - 1:
-                        time.sleep(PAUSE_AFTER_MARKET)
+                        time.sleep(self.PAUSE_AFTER_MARKET)
 
             if not market_objs_on_page and question_links:
                 break
@@ -303,7 +312,7 @@ class GoodJudgmentOpenScraper(BaseScraper):
             if not market_objs_on_page and not question_links:
                 break
 
-            time.sleep(PAUSE_AFTER_PAGE)
+            time.sleep(self.PAUSE_AFTER_PAGE)
 
         return all_markets_data
 
@@ -311,7 +320,7 @@ class GoodJudgmentOpenScraper(BaseScraper):
 if __name__ == "__main__":
     import asyncio
 
-    async def run_gjopen_scraper() -> None:
+    async def _main() -> None:
         try:
             scraper = GoodJudgmentOpenScraper()
 
@@ -330,4 +339,4 @@ if __name__ == "__main__":
         except (FileNotFoundError, ValueError, ConnectionError):
             pass
 
-    asyncio.run(run_gjopen_scraper())
+    asyncio.run(_main())

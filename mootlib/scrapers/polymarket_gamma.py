@@ -17,7 +17,12 @@ import dotenv
 # from py_clob_client.constants import POLYGON # Not used in this version
 from tqdm import tqdm
 
-from mootlib.scrapers.common_markets import BaseMarket, BaseScraper, PooledMarket
+from mootlib.scrapers.common_markets import (
+    BaseMarket,
+    BaseScraper,
+    MarketFilter,
+    PooledMarket,
+)
 
 # Load environment variables if .env file exists
 dotenv.load_dotenv()
@@ -25,8 +30,14 @@ dotenv.load_dotenv()
 GAMMA_API_BASE_URL = "https://gamma-api.polymarket.com"
 
 
+DEFAULT_MARKET_FILTER = MarketFilter(
+    min_volume=10000,
+    only_open=True,
+)
+
+
 @cache
-def parse_outcomes_string(outcomes_str: str) -> list[str]:
+def _parse_outcomes_string(outcomes_str: str) -> list[str]:
     if not outcomes_str or not isinstance(outcomes_str, str):
         return []
     try:
@@ -38,7 +49,7 @@ def parse_outcomes_string(outcomes_str: str) -> list[str]:
         return []
 
 
-def format_outcomes_polymarket(
+def _format_outcomes_polymarket(
     outcomes: list[str],
     prices: list[float] | None = None,
 ) -> str:
@@ -58,7 +69,7 @@ def format_outcomes_polymarket(
     )
 
 
-def safe_float(value: Any, default: float = 0.0) -> float:
+def _safe_float(value: Any, default: float = 0.0) -> float:
     if value is None:
         return default
     try:
@@ -67,7 +78,8 @@ def safe_float(value: Any, default: float = 0.0) -> float:
         return default
 
 
-def safe_str(value: Any, default: str = "") -> str:
+def _safe_str(value: Any, default: str = "") -> str:
+    """Safe string conversion."""
     if value is None:
         return default
     return str(value)
@@ -75,6 +87,8 @@ def safe_str(value: Any, default: str = "") -> str:
 
 @dataclass
 class PolymarketMarket(BaseMarket):
+    """Polymarket market dataclass."""
+
     id: str
     question: str
     slug: str
@@ -96,8 +110,9 @@ class PolymarketMarket(BaseMarket):
 
     @classmethod
     def from_api_data(cls, data: dict[str, Any]) -> "PolymarketMarket":
+        """Create PolymarketMarket from API data."""
         raw_outcomes = data.get("outcomes", "[]")
-        parsed_outcomes_list = parse_outcomes_string(raw_outcomes)
+        parsed_outcomes_list = _parse_outcomes_string(raw_outcomes)
 
         raw_outcome_prices_payload = data.get("outcomePrices")
         parsed_outcome_prices_list: list[float | None] = []
@@ -117,7 +132,7 @@ class PolymarketMarket(BaseMarket):
         if temp_prices_for_parsing:
             num_outcomes = len(parsed_outcomes_list)
             parsed_outcome_prices_list = [
-                (safe_float(p) if p is not None else None)
+                (_safe_float(p) if p is not None else None)
                 for p in temp_prices_for_parsing[:num_outcomes]
             ]
             # Pad with None if API provided fewer prices than outcomes
@@ -128,31 +143,31 @@ class PolymarketMarket(BaseMarket):
         else:  # No prices provided or parse failed
             parsed_outcome_prices_list = [None] * len(parsed_outcomes_list)
 
-        formatted_outcomes_str = format_outcomes_polymarket(
+        formatted_outcomes_str = _format_outcomes_polymarket(
             parsed_outcomes_list,
             parsed_outcome_prices_list,
         )
 
-        total_volume = safe_float(data.get("volume"))
+        total_volume = _safe_float(data.get("volume"))
         if total_volume == 0.0:
-            total_volume = safe_float(data.get("volumeNum"))
+            total_volume = _safe_float(data.get("volumeNum"))
 
-        liquidity = safe_float(data.get("liquidityAmm")) + safe_float(
+        liquidity = _safe_float(data.get("liquidityAmm")) + _safe_float(
             data.get("liquidityClob"),
         )
         if liquidity == 0.0:
-            liquidity = safe_float(data.get("liquidity"))
+            liquidity = _safe_float(data.get("liquidity"))
         if liquidity == 0.0:
-            liquidity = safe_float(data.get("liquidityNum"))
+            liquidity = _safe_float(data.get("liquidityNum"))
 
-        slug_val = safe_str(data.get("slug"))
+        slug_val = _safe_str(data.get("slug"))
         market_url = f"https://polymarket.com/event/{slug_val}" if slug_val else ""
 
         return cls(
-            id="polymarket_" + safe_str(data.get("id")),
-            question=safe_str(data.get("question")),
+            id="polymarket_" + _safe_str(data.get("id")),
+            question=_safe_str(data.get("question")),
             slug=slug_val,
-            description=safe_str(data.get("description")),
+            description=_safe_str(data.get("description")),
             outcomes=parsed_outcomes_list,
             outcome_prices=(
                 parsed_outcome_prices_list
@@ -169,16 +184,17 @@ class PolymarketMarket(BaseMarket):
             active=bool(data.get("active", False)),
             closed=bool(data.get("closed", False)),
             resolution_source=(
-                safe_str(data.get("resolutionSource"))
+                _safe_str(data.get("resolutionSource"))
                 if data.get("resolutionSource")
                 else None
             ),
-            raw_market_type=safe_str(
+            raw_market_type=_safe_str(
                 data.get("category"),
             ),
         )
 
     def to_pooled_market(self) -> PooledMarket:
+        """Convert PolymarketMarket to PooledMarket."""
         # Determine original_market_type based on raw_market_type or outcomes
         market_type = self.raw_market_type
         if not market_type:
@@ -221,7 +237,10 @@ class PolymarketMarket(BaseMarket):
 
 
 class PolymarketGammaScraper(BaseScraper):
+    """Scraper for Polymarket Gamma markets."""
+
     BASE_URL = GAMMA_API_BASE_URL
+    LIMIT_PER_PAGE = 500
 
     def __init__(self, timeout: int = 20) -> None:
         self.timeout = timeout
@@ -260,7 +279,6 @@ class PolymarketGammaScraper(BaseScraper):
     ) -> list[dict[str, Any]]:
         all_raw_market_data: list[dict[str, Any]] = []
         offset = 0
-        LIMIT_PER_PAGE = 500
 
         # tqdm is not async-friendly by default, consider alternatives or careful
         # usage in async.
@@ -268,15 +286,15 @@ class PolymarketGammaScraper(BaseScraper):
         # concurrent scenarios.
         for i in tqdm(range(max_requests), desc="Fetching Polymarket pages"):
             raw_data_list = await self._fetch_page_data(
-                limit=LIMIT_PER_PAGE,
+                limit=self.LIMIT_PER_PAGE,
                 offset=offset,
             )
             if not raw_data_list:
                 break
             all_raw_market_data.extend(raw_data_list)
-            if len(raw_data_list) < LIMIT_PER_PAGE:
+            if len(raw_data_list) < self.LIMIT_PER_PAGE:
                 break
-            offset += LIMIT_PER_PAGE
+            offset += self.LIMIT_PER_PAGE
             if i == max_requests - 1:
                 pass
         return all_raw_market_data
@@ -284,7 +302,7 @@ class PolymarketGammaScraper(BaseScraper):
     async def fetch_markets(
         self,
         only_open: bool = True,
-        min_volume: float = 10000,
+        min_volume: float = DEFAULT_MARKET_FILTER.min_volume,
         **kwargs: Any,
     ) -> list[PolymarketMarket]:
         """Fetch markets from Polymarket Gamma API and parse them into PolymarketMarket
@@ -292,6 +310,7 @@ class PolymarketGammaScraper(BaseScraper):
 
         Args:
             only_open: Whether to return only open markets (where closed is False).
+            min_volume: Minimum volume to include in the returned markets, in USD.
             **kwargs: Supports 'max_requests' (int, default 200) and
                       'limit_per_page' (int, default 100).
 
@@ -328,7 +347,7 @@ class PolymarketGammaScraper(BaseScraper):
 if __name__ == "__main__":
     import asyncio  # For async main
 
-    async def run_polymarket_scraper() -> None:
+    async def _run_polymarket_scraper() -> None:
         scraper = PolymarketGammaScraper()
         fetch_active = True
         time.time()
@@ -349,4 +368,4 @@ if __name__ == "__main__":
         else:
             pass
 
-    asyncio.run(run_polymarket_scraper())
+    asyncio.run(_run_polymarket_scraper())

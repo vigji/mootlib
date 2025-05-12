@@ -62,7 +62,9 @@ def create_visualization(df_to_viz):
 
     # Customize hover template
     fig.update_traces(
-        hovertemplate="Question: %{customdata[0]} (%{customdata[1]})<br>Outcomes: %{customdata[2]}<br>Closest Questions:<br>%{customdata[3]}<br><br><extra></extra>",
+        hovertemplate="Question: %{customdata[0]} (%{customdata[1]})<br>Outcomes:"
+        " %{customdata[2]}<br>Closest Questions:<br>%{customdata[3]}<br><br>"
+        "<extra></extra>",
     )
 
     # Update layout

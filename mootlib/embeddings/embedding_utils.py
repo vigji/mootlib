@@ -22,10 +22,12 @@ os.getenv("DEEPINFRA_TOKEN")
 
 
 def preprocess_questions(questions_list):
+    """Preprocess a list of questions."""
     return [q.strip() for q in questions_list]
 
 
 def _embed_all_questions(questions_list):
+    """Embed all questions."""
     questions_list = preprocess_questions(questions_list)
     embeddings = openai.embeddings.create(
         model=model,
@@ -51,6 +53,7 @@ def _embed_in_chunks(questions_list, chunk_size=200):
 
 
 def embed_list(questions_list, chunk_size=None):
+    """Embed a list of questions."""
     if chunk_size is None:
         embeddings = _embed_all_questions(questions_list)
     else:
@@ -78,6 +81,7 @@ def embed_list_with_cache(questions_list, cache_folder=None, chunk_size=None):
 
 
 def embed_questions_df(question_df, question_column="question", cache_folder=None):
+    """Embed a dataframe of questions."""
     questions_list = question_df[question_column].to_list()
     n_questions = len(questions_list)
     chunk_size = 1024 if n_questions > 1024 else None
