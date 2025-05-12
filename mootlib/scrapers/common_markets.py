@@ -5,6 +5,14 @@ from datetime import datetime, timezone
 
 
 @dataclass
+class MarketFilter:
+    min_n_forecasters: Optional[int] = None
+    min_comments_count: Optional[int] = None
+    min_volume: Optional[float] = None
+    only_open: bool = True
+
+
+@dataclass
 class PooledMarket:
     id: str  # Platform-prefixed ID, e.g., "gjopen_123", "polymarket_abc"
     question: str

@@ -13,7 +13,9 @@ import time
 from tqdm import tqdm
 import aiohttp
 
-from mootlib.scrapers.common_markets import PooledMarket, BaseMarket, BaseScraper
+from mootlib.scrapers.common_markets import PooledMarket, BaseMarket, BaseScraper, MarketFilter
+
+VALID_MARKETS_FILTER = MarketFilter(min_n_forecasters=40)
 
 BASE_URL = "https://www.gjopen.com"
 QUESTIONS_URL = f"{BASE_URL}/questions"
@@ -123,8 +125,7 @@ class GoodJudgmentOpenScraper(BaseScraper):
         """
         Initializes the scraper and logs in.
         Authentication credentials can be provided directly or loaded from
-        environment variables (GJO_EMAIL, GJO_PASSWORD) or a JSON file
-        (~/.gjopen_credentials.json).
+        environment variables (GJO_EMAIL, GJO_PASSWORD).
         """
         self.session = None
         self.headers = {"User-Agent": "Mozilla/5.0 (compatible; PythonScraper/1.0)"}
@@ -139,14 +140,7 @@ class GoodJudgmentOpenScraper(BaseScraper):
             self.email = env_email
             self.password = env_password
         else:
-            creds = self._load_credentials_from_file()
-            if not creds or "email" not in creds or "password" not in creds:
-                raise ValueError(
-                    "Credentials format error in ~/.gjopen_credentials.json. "
-                    "Expected {'email': 'your@email.com', 'password': 'yourpassword'}"
-                )
-            self.email = creds["email"]
-            self.password = creds["password"]
+            raise ValueError("No credentials provided for GJOpen")
 
     async def __aenter__(self):
         self.session = aiohttp.ClientSession(headers=self.headers)
@@ -156,18 +150,6 @@ class GoodJudgmentOpenScraper(BaseScraper):
     async def __aexit__(self, exc_type, exc_val, exc_tb):
         if self.session:
             await self.session.close()
-
-    def _load_credentials_from_file(self):
-        creds_file = Path.home() / ".gjopen_credentials.json"
-        if not creds_file.exists():
-            raise FileNotFoundError(
-                f"Credentials not provided and {creds_file} not found. "
-                "Please provide email/password, set GJO_EMAIL/GJO_PASSWORD env vars, "
-                "or create the JSON credentials file with format: "
-                '{"email": "your@email.com", "password": "yourpassword"}'
-            )
-        with open(creds_file) as f:
-            return json.load(f)
 
     async def _login(self):
         """Logs into Good Judgment Open."""
@@ -204,12 +186,16 @@ class GoodJudgmentOpenScraper(BaseScraper):
         if "Invalid Email or password" in resp_text or "sign_in" in str(response.url):
             raise ValueError("Login failed - please check credentials.")
 
-    async def _fetch_question_links_for_page(self, page: int = 5) -> List[str]:
+    async def _fetch_question_links_for_page(self, page: int = None) -> List[str]:
         """Fetches all question links from a given results page."""
         if not self.session:
             self.session = aiohttp.ClientSession(headers=self.headers)
 
-        url = f"{self.QUESTIONS_URL}?sort=predictors_count&sort_dir=desc&page={page}"
+        if page is None:
+            url = f"{self.QUESTIONS_URL}?sort=predictors_count&sort_dir=desc"
+        else:
+            url = f"{self.QUESTIONS_URL}?sort=predictors_count&sort_dir=desc&page={page}"
+        
         try:
             async with self.session.get(url, timeout=10) as response:
                 response.raise_for_status()
@@ -261,7 +247,7 @@ class GoodJudgmentOpenScraper(BaseScraper):
         return None
 
     async def fetch_markets(
-        self, only_open: bool = True, min_n_forecasters: int = 40, **kwargs: Any
+        self, only_open: bool = True, min_n_forecasters: int = VALID_MARKETS_FILTER.min_n_forecasters, **kwargs: Any
     ) -> List[GJOpenMarket]:
         """
         Fetches markets from Good Judgment Open.
@@ -290,7 +276,7 @@ class GoodJudgmentOpenScraper(BaseScraper):
             for i, link in enumerate(question_links):
                 try:
                     market_obj = await self._fetch_market_data_for_url(link)
-                    if market_obj:
+                    if market_obj and market_obj.question not in [m.question for m in all_markets_data]:
                         # If only_open is True, we ideally would filter here if market_obj had resolution status.
                         # For now, all fetched markets are added, and filtering happens later if PooledMarket has status.
                         market_objs_on_page.append(market_obj)
@@ -357,7 +343,7 @@ if __name__ == "__main__":
         except (FileNotFoundError, ValueError, ConnectionError) as e:
             print(f"Error: {e}")
             print(
-                "Please ensure credentials are set up via environment variables (GJO_EMAIL, GJO_PASSWORD) or ~/.gjopen_credentials.json"
+                "Please ensure credentials are set up via environment variables (GJO_EMAIL, GJO_PASSWORD)"
             )
 
     asyncio.run(run_gjopen_scraper())

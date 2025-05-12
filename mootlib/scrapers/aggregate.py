@@ -7,11 +7,11 @@ import json
 from datetime import datetime
 
 from mootlib.scrapers.common_markets import PooledMarket
-from gjopen import GoodJudgmentOpenScraper
-from manimarket import ManifoldScraper
-from polygamma import PolymarketGammaScraper
-from predictit import PredictItScraper
-from metaculus import MetaculusScraper
+from mootlib.scrapers.gjopen import GoodJudgmentOpenScraper
+from mootlib.scrapers.manifold import ManifoldScraper
+from mootlib.scrapers.polygamma import PolymarketGammaScraper
+from mootlib.scrapers.predictit import PredictItScraper
+from mootlib.scrapers.metaculus import MetaculusScraper
 
 
 def save_markets_to_cache(markets: List[PooledMarket], platform: str) -> Path:
