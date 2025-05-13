@@ -10,6 +10,8 @@ from openai import OpenAI
 from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
 
+from mootlib.embeddings.remote_cache import get_remote_cache
+
 model = "BAAI/bge-m3"
 EMBEDDING_DIM = 1024  # BGE-M3 embedding dimension
 MAX_CHUNK_SIZE = 1024
@@ -32,12 +34,15 @@ def compute_string_hash(text: str) -> str:
 class EmbeddingsCache:
     """Cache for embeddings."""
 
+    GITHUB_RELEASE_URL = "https://github.com/vigji/mootlib/releases/download/latest/embeddings.parquet.encrypted"
+
     def __init__(
         self,
         cache_path: Path | None = None,
         model: str = "BAAI/bge-m3",
         embedding_dim: int = 1024,
         chunk_size: int = 1024,
+        use_remote: bool = True,
     ):
         """Initialize embeddings cache.
 
@@ -46,6 +51,7 @@ class EmbeddingsCache:
             model: Model to use for embeddings.
             embedding_dim: Dimension of embeddings.
             chunk_size: Maximum chunk size for batch processing.
+            use_remote: Whether to try fetching remote cache first.
         """
         if cache_path is None:
             cache_path = (
@@ -58,10 +64,17 @@ class EmbeddingsCache:
         self.embedding_dim = embedding_dim
         self.chunk_size = chunk_size
 
-        # Load or create cache
+        # Try to load cache in order: local file, remote cache, create new
+        self.cache_df = None
+
         if self.cache_path.exists():
             self.cache_df = pd.read_parquet(self.cache_path)
-        else:
+        elif use_remote:
+            self.cache_df = get_remote_cache(self.GITHUB_RELEASE_URL)
+            if self.cache_df is not None:
+                self.save_cache()
+
+        if self.cache_df is None:
             self.cache_df = pd.DataFrame(
                 columns=["text_hash", "text", "embedding"]
             ).set_index("text_hash")
