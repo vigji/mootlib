@@ -3,7 +3,7 @@
 This module provides the main interface for interacting with Mootlib. It allows users
 to:
 - Find similar questions across multiple prediction market platforms
-- Access historical market data
+- Access historical market data and embeddings
 - Compare questions using semantic similarity
 
 Example:
@@ -16,6 +16,9 @@ Example:
     ... )
     >>> for q in similar:
     ...     print(f"\\n{q}")
+    >>> # Access raw dataframes
+    >>> markets_df = matcher.markets_df
+    >>> embeddings_df = matcher.embeddings_df
 
 The matcher automatically handles:
 - Downloading and caching market data from GitHub releases
@@ -94,18 +97,23 @@ class MootlibMatcher:
     - Downloading and caching market data from GitHub releases
     - Computing semantic similarity between questions
     - Managing temporary storage with configurable duration
+    - Providing access to raw market data and embeddings
 
     The matcher uses a local temporary directory to store downloaded market data.
     This data is automatically refreshed when it becomes stale (default: 30 minutes).
 
     Example:
         >>> matcher = MootlibMatcher()
+        >>> # Find similar questions
         >>> similar = matcher.find_similar_questions(
         ...     "Will SpaceX reach Mars by 2025?",
         ...     n_results=3
         ... )
         >>> for q in similar:
         ...     print(f"\\n{q}")
+        >>> # Access raw dataframes
+        >>> markets_df = matcher.markets_df  # Get all market data
+        >>> embeddings_df = matcher.embeddings_df  # Get question embeddings
 
     Note:
         Requires the MOOTLIB_ENCRYPTION_KEY environment variable to be set
@@ -131,7 +139,7 @@ class MootlibMatcher:
         """
         self.cache_duration = timedelta(minutes=cache_duration_minutes)
         self.last_refresh: datetime | None = None
-        self.markets_df: pd.DataFrame | None = None
+        self._markets_df: pd.DataFrame | None = None
         self.embeddings_cache = EmbeddingsCache()
 
         # Ensure we have the encryption key
@@ -143,6 +151,42 @@ class MootlibMatcher:
         # Create temp directory if it doesn't exist
         self.TEMP_DIR.mkdir(parents=True, exist_ok=True)
         self.markets_file = self.TEMP_DIR / "markets.parquet.encrypted"
+
+    @property
+    def markets_df(self) -> pd.DataFrame:
+        """Get the current markets DataFrame.
+
+        Returns:
+            A pandas DataFrame containing all market data, with columns including:
+            - question: The market question text
+            - source_platform: Platform where the market is from
+            - formatted_outcomes: Current probabilities/outcomes
+            - url: Link to the original market
+            - n_forecasters: Number of forecasters
+            - volume: Trading volume/liquidity
+            - published_at: Publication datetime
+
+        Note:
+            Automatically downloads fresh data if the cache is stale.
+        """
+        self._ensure_fresh_data()
+        if self._markets_df is None:
+            raise RuntimeError("Failed to load markets data")
+        return self._markets_df
+
+    @property
+    def embeddings_df(self) -> pd.DataFrame:
+        """Get the embeddings DataFrame.
+
+        Returns:
+            A pandas DataFrame containing question embeddings, with columns:
+            - text: The question text
+            - embedding: The numerical embedding vector
+
+        Note:
+            Embeddings are computed on-demand and cached for future use.
+        """
+        return self.embeddings_cache.cache_df
 
     def _download_markets_file(self) -> None:
         """Download the markets file from GitHub releases."""
@@ -166,7 +210,7 @@ class MootlibMatcher:
 
         # Check if we need to refresh the DataFrame
         if (
-            self.markets_df is None
+            self._markets_df is None
             or self.last_refresh is None
             or now - self.last_refresh > self.cache_duration
         ):
@@ -174,7 +218,7 @@ class MootlibMatcher:
             if not self._is_cache_valid():
                 self._download_markets_file()
 
-            self.markets_df = decrypt_to_df(self.markets_file, format="parquet")
+            self._markets_df = decrypt_to_df(self.markets_file, format="parquet")
             self.last_refresh = now
 
     def find_similar_questions(
@@ -213,13 +257,13 @@ class MootlibMatcher:
             ...     print(f"\\n{q}")
         """
         self._ensure_fresh_data()
-        if not self.markets_df is not None:
+        if not self._markets_df is not None:
             raise RuntimeError("Failed to load markets data")
 
         # Get embeddings for the query and all questions
         query_embedding = self.embeddings_cache.get_embeddings([query])[0]
         all_embeddings = self.embeddings_cache.get_embeddings(
-            self.markets_df["question"].tolist()
+            self._markets_df["question"].tolist()
         )
 
         # Calculate similarities
@@ -234,7 +278,7 @@ class MootlibMatcher:
         # Create SimilarQuestion objects for each match
         similar_questions = []
         for idx in top_indices:
-            row = self.markets_df.iloc[idx]
+            row = self._markets_df.iloc[idx]
             published_at = row.get("published_at")
 
             similar_questions.append(

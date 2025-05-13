@@ -8,6 +8,7 @@ A Python library for finding similar questions across prediction markets.
 - Access historical market data and probabilities
 - Compare questions using semantic similarity
 - Automatic caching and data management
+- Direct access to market data and embeddings
 
 ## Installation
 
@@ -108,6 +109,39 @@ matcher = MootlibMatcher(cache_duration_minutes=30)
 Parameters:
 - `cache_duration_minutes`: How long to keep downloaded data in cache (default: 30)
 
+#### Properties
+
+##### markets_df
+
+Access the raw markets DataFrame containing all prediction market data:
+
+```python
+markets_df = matcher.markets_df
+```
+
+The DataFrame contains columns:
+- `question`: The market question text
+- `source_platform`: Platform where the market is from
+- `formatted_outcomes`: Current probabilities/outcomes
+- `url`: Link to the original market
+- `n_forecasters`: Number of forecasters
+- `volume`: Trading volume/liquidity
+- `published_at`: Publication datetime
+
+##### embeddings_df
+
+Access the embeddings DataFrame containing question vectors:
+
+```python
+embeddings_df = matcher.embeddings_df
+```
+
+The DataFrame contains columns:
+- `text`: The question text
+- `embedding`: The numerical embedding vector
+
+Note: Embeddings are computed on-demand and cached for future use.
+
 #### find_similar_questions
 
 ```python
@@ -180,6 +214,32 @@ for q in similar:
     if q.n_forecasters:
         print(f"Number of Forecasters: {q.n_forecasters}")
     print("-" * 80)
+```
+
+### Accessing Raw Data
+
+```python
+from mootlib import MootlibMatcher
+
+matcher = MootlibMatcher()
+
+# Get all market data
+markets_df = matcher.markets_df
+print(f"Total markets: {len(markets_df)}")
+print("\nMarkets by platform:")
+print(markets_df["source_platform"].value_counts())
+
+# Get question embeddings
+embeddings_df = matcher.embeddings_df
+print(f"\nTotal questions with embeddings: {len(embeddings_df)}")
+
+# Filter markets by platform
+manifold_markets = markets_df[markets_df["source_platform"] == "Manifold"]
+print(f"\nManifold markets: {len(manifold_markets)}")
+
+# Get high-volume markets
+high_volume = markets_df[markets_df["volume"] > 1000]
+print(f"\nHigh volume markets: {len(high_volume)}")
 ```
 
 ## Development
