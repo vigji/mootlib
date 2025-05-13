@@ -1,4 +1,27 @@
-"""Provides functionality for finding similar questions in the market database."""
+"""Main API for Mootlib - a library for finding similar prediction market questions.
+
+This module provides the main interface for interacting with Mootlib. It allows users
+to:
+- Find similar questions across multiple prediction market platforms
+- Access historical market data
+- Compare questions using semantic similarity
+
+Example:
+    >>> from mootlib import MootlibMatcher
+    >>> matcher = MootlibMatcher()
+    >>> similar = matcher.find_similar_questions(
+    ...     "Will Russia invade Moldova in 2024?",
+    ...     n_results=3,
+    ...     min_similarity=0.7
+    ... )
+    >>> for q in similar:
+    ...     print(f"\\n{q}")
+
+The matcher automatically handles:
+- Downloading and caching market data from GitHub releases
+- Managing temporary storage with configurable duration
+- Semantic similarity computation using embeddings
+"""
 
 import os
 import tempfile
@@ -17,7 +40,24 @@ from mootlib.utils.encryption import decrypt_to_df
 
 @dataclass
 class SimilarQuestion:
-    """A dataclass representing a similar question with its metadata."""
+    """A dataclass representing a similar question with its metadata.
+
+    This class provides a structured way to access information about similar
+    questions
+    found in prediction markets.
+
+    Attributes:
+        question: The text of the prediction market question.
+        similarity_score: How similar this question is to the query (0-1).
+        source_platform: The platform where this question was found (e.g., "Manifold",
+        "Metaculus").
+        formatted_outcomes: String representation of possible outcomes and
+        their probabilities.
+        url: Optional URL to the original market.
+        n_forecasters: Optional number of people who made predictions.
+        volume: Optional trading volume or liquidity.
+        published_at: Optional datetime when the market was published.
+    """
 
     question: str
     similarity_score: float
@@ -47,8 +87,30 @@ class SimilarQuestion:
         return "\n".join(parts)
 
 
-class QuestionMatcher:
-    """A class for finding similar questions in the market database."""
+class MootlibMatcher:
+    """Main interface for finding similar questions across prediction markets.
+
+    This class provides the primary API for Mootlib. It handles:
+    - Downloading and caching market data from GitHub releases
+    - Computing semantic similarity between questions
+    - Managing temporary storage with configurable duration
+
+    The matcher uses a local temporary directory to store downloaded market data.
+    This data is automatically refreshed when it becomes stale (default: 30 minutes).
+
+    Example:
+        >>> matcher = MootlibMatcher()
+        >>> similar = matcher.find_similar_questions(
+        ...     "Will SpaceX reach Mars by 2025?",
+        ...     n_results=3
+        ... )
+        >>> for q in similar:
+        ...     print(f"\\n{q}")
+
+    Note:
+        Requires the MOOTLIB_ENCRYPTION_KEY environment variable to be set
+        for decrypting market data.
+    """
 
     GITHUB_RELEASE_URL = "https://github.com/vigji/mootlib/releases/download/latest/markets.parquet.encrypted"
     TEMP_DIR = Path(tempfile.gettempdir()) / "mootlib"
@@ -57,10 +119,15 @@ class QuestionMatcher:
         self,
         cache_duration_minutes: int = 30,
     ):
-        """Initialize the QuestionMatcher.
+        """Initialize the MootlibMatcher.
 
         Args:
             cache_duration_minutes: How long to keep the data in memory and cache.
+                After this duration, fresh data will be downloaded from GitHub.
+                Defaults to 30 minutes.
+
+        Raises:
+            ValueError: If MOOTLIB_ENCRYPTION_KEY environment variable is not set.
         """
         self.cache_duration = timedelta(minutes=cache_duration_minutes)
         self.last_refresh: datetime | None = None
@@ -79,6 +146,10 @@ class QuestionMatcher:
 
     def _download_markets_file(self) -> None:
         """Download the markets file from GitHub releases."""
+        print(
+            f"Downloading markets file from {self.GITHUB_RELEASE_URL} to"
+            f" {self.markets_file}"
+        )
         urllib.request.urlretrieve(self.GITHUB_RELEASE_URL, self.markets_file)
 
     def _is_cache_valid(self) -> bool:
@@ -104,14 +175,6 @@ class QuestionMatcher:
                 self._download_markets_file()
 
             self.markets_df = decrypt_to_df(self.markets_file, format="parquet")
-
-            # Convert published_at to datetime if it exists
-            if "published_at" in self.markets_df.columns:
-                self.markets_df["published_at"] = pd.to_datetime(
-                    self.markets_df["published_at"],
-                    utc=True,  # First convert everything to UTC
-                ).dt.tz_convert("America/New_York")  # Then convert to ET
-
             self.last_refresh = now
 
     def find_similar_questions(
@@ -120,16 +183,34 @@ class QuestionMatcher:
         n_results: int = 5,
         min_similarity: float = 0.5,
     ) -> list[SimilarQuestion]:
-        """Find questions similar to the query.
+        """Find questions similar to the query across all prediction markets.
+
+        This method searches through all available prediction market questions
+        to find those most semantically similar to your query. It uses
+        embeddings to compute similarity scores.
 
         Args:
             query: The question to find similar matches for.
+                Example: "Will Russia invade another country in 2024?"
             n_results: Number of similar questions to return.
+                Defaults to 5.
             min_similarity: Minimum similarity score (0-1) for returned questions.
+                Higher values mean more similar results.
+                Defaults to 0.5.
 
         Returns:
             A list of SimilarQuestion objects, sorted by similarity
             (most similar first).
+
+        Example:
+            >>> matcher = MootlibMatcher()
+            >>> similar = matcher.find_similar_questions(
+            ...     "Will Tesla stock reach $300 in 2024?",
+            ...     n_results=3,
+            ...     min_similarity=0.7
+            ... )
+            >>> for q in similar:
+            ...     print(f"\\n{q}")
         """
         self._ensure_fresh_data()
         if not self.markets_df is not None:
@@ -155,7 +236,6 @@ class QuestionMatcher:
         for idx in top_indices:
             row = self.markets_df.iloc[idx]
             published_at = row.get("published_at")
-            # published_at is already handled in _ensure_fresh_data
 
             similar_questions.append(
                 SimilarQuestion(
@@ -175,8 +255,8 @@ class QuestionMatcher:
 
 if __name__ == "__main__":
     # Example usage
-    matcher = QuestionMatcher()
-    query = "Russia Ukraine ceasefire in 2025?"
+    matcher = MootlibMatcher()
+    query = "Will Russia invade another country in 2024?"
     similar = matcher.find_similar_questions(query, n_results=3)
     for q in similar:
         print(f"\n{q}\n{'-' * 80}")

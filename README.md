@@ -1,15 +1,190 @@
-# mootlib
+# Mootlib
 
-A library for scraping and analyzing forecasting markets.
+A Python library for finding similar questions across prediction markets.
 
-## Requirements
+## Features
 
-- Python 3.11 or higher
-- uv (for dependency management)
+- Search for similar questions across multiple prediction market platforms
+- Access historical market data and probabilities
+- Compare questions using semantic similarity
+- Automatic caching and data management
 
 ## Installation
 
-### Local Development Installation
+```bash
+pip install mootlib
+```
+
+## Environment Setup
+
+### Required Environment Variables
+
+The library requires several environment variables to function:
+
+- `MOOTLIB_ENCRYPTION_KEY`: Required for decrypting market data
+- `DEEPINFRA_TOKEN`: Required for computing embeddings
+- `GJO_EMAIL` and `GJO_PASSWORD`: Optional, for Good Judgment Open access
+
+You can set these up in two ways:
+
+#### 1. Using a .env file (recommended for local development)
+
+Create a `.env` file in your project root:
+
+```bash
+MOOTLIB_ENCRYPTION_KEY="your-key-here"
+DEEPINFRA_TOKEN="your-token-here"
+GJO_EMAIL="your-email@example.com"  # Optional
+GJO_PASSWORD="your-password"        # Optional
+```
+
+Then in your Python code:
+```python
+from dotenv import load_dotenv
+load_dotenv()  # Load environment variables from .env
+
+from mootlib import MootlibMatcher
+matcher = MootlibMatcher()
+```
+
+#### 2. Setting environment variables directly
+
+```bash
+# Unix/macOS
+export MOOTLIB_ENCRYPTION_KEY="your-key-here"
+export DEEPINFRA_TOKEN="your-token-here"
+
+# Windows PowerShell
+$env:MOOTLIB_ENCRYPTION_KEY="your-key-here"
+$env:DEEPINFRA_TOKEN="your-token-here"
+```
+
+#### 3. For GitHub Actions
+
+Add these secrets in your repository's Settings → Secrets and Variables → Actions:
+
+- `MOOTLIB_ENCRYPTION_KEY`
+- `DEEPINFRA_TOKEN`
+- `GJO_EMAIL` (optional)
+- `GJO_PASSWORD` (optional)
+
+Then use them in your workflow:
+```yaml
+env:
+  MOOTLIB_ENCRYPTION_KEY: ${{ secrets.MOOTLIB_ENCRYPTION_KEY }}
+  DEEPINFRA_TOKEN: ${{ secrets.DEEPINFRA_TOKEN }}
+```
+
+## Quick Start
+
+```python
+from mootlib import MootlibMatcher
+
+# Initialize the matcher
+matcher = MootlibMatcher()
+
+# Find similar questions
+similar = matcher.find_similar_questions(
+    "Will Russia invade Moldova in 2024?",
+    n_results=3,
+    min_similarity=0.7
+)
+
+# Print the results
+for question in similar:
+    print(f"\n{question}")
+```
+
+## API Reference
+
+### MootlibMatcher
+
+The main interface for finding similar questions across prediction markets.
+
+```python
+matcher = MootlibMatcher(cache_duration_minutes=30)
+```
+
+Parameters:
+- `cache_duration_minutes`: How long to keep downloaded data in cache (default: 30)
+
+#### find_similar_questions
+
+```python
+similar = matcher.find_similar_questions(
+    query="Will Tesla stock reach $300 in 2024?",
+    n_results=5,
+    min_similarity=0.5
+)
+```
+
+Parameters:
+- `query`: The question to find similar matches for
+- `n_results`: Number of similar questions to return (default: 5)
+- `min_similarity`: Minimum similarity score 0-1 (default: 0.5)
+
+Returns a list of `SimilarQuestion` objects with the following attributes:
+- `question`: The text of the prediction market question
+- `similarity_score`: How similar this question is to the query (0-1)
+- `source_platform`: The platform where this question was found
+- `formatted_outcomes`: String representation of possible outcomes and probabilities
+- `url`: URL to the original market (optional)
+- `n_forecasters`: Number of people who made predictions (optional)
+- `volume`: Trading volume or liquidity (optional)
+- `published_at`: When the market was published (optional)
+
+## Examples
+
+### Finding Similar Market Questions
+
+```python
+from mootlib import MootlibMatcher
+
+matcher = MootlibMatcher()
+
+# Search for AI-related questions
+ai_questions = matcher.find_similar_questions(
+    "Will AGI be achieved by 2025?",
+    n_results=3,
+    min_similarity=0.7
+)
+
+# Search for geopolitical questions
+geo_questions = matcher.find_similar_questions(
+    "Will China invade Taiwan in 2024?",
+    n_results=3,
+    min_similarity=0.7
+)
+
+# Print results
+for q in ai_questions + geo_questions:
+    print(f"\n{q}\n{'=' * 80}")
+```
+
+### Accessing Market Details
+
+```python
+from mootlib import MootlibMatcher
+
+matcher = MootlibMatcher()
+
+# Find similar questions and access their details
+similar = matcher.find_similar_questions("Will SpaceX reach Mars by 2025?")
+
+for q in similar:
+    print(f"\nQuestion: {q.question}")
+    print(f"Platform: {q.source_platform}")
+    print(f"Current Probabilities: {q.formatted_outcomes}")
+    if q.url:
+        print(f"Market URL: {q.url}")
+    if q.n_forecasters:
+        print(f"Number of Forecasters: {q.n_forecasters}")
+    print("-" * 80)
+```
+
+## Development
+
+### Local Setup
 
 1. Clone the repository
 ```bash
@@ -17,39 +192,39 @@ git clone https://github.com/vigji/mootlib.git
 cd mootlib
 ```
 
-2. Install uv if you haven't already:
+2. Install dependencies with uv
 ```bash
 pip install uv
-```
-
-3. Create and activate a virtual environment:
-```bash
 uv venv
 source .venv/bin/activate  # On Unix/macOS
 # or
 .venv\Scripts\activate     # On Windows
-```
-
-4. Install the package in editable mode with development dependencies:
-```bash
 uv pip install -e ".[dev]"
 ```
 
-The virtual environment will be created in the `.venv` directory inside your project.
+### Code Quality
 
-### Using pip (once published)
+We use [Ruff](https://github.com/astral-sh/ruff) for all Python linting and formatting:
 
 ```bash
-pip install mootlib
+# Format code
+ruff format .
+
+# Run linter
+ruff check .
+
+# Run linter with automatic fixes
+ruff check --fix .
 ```
 
-## Development
+### Code Style Guidelines
 
-This project uses modern Python tooling for development:
-
-- Ruff for formatting and linting (includes functionality from black, isort, flake8, and many other tools)
-- MyPy for type checking
-- Pytest for testing
+- Maximum line length: 88 characters (enforced by Ruff)
+- Use pathlib over os.path
+- Use functions only where you see opportunity for code reuse
+- Use classes sparingly and when it makes sense over functions
+- Use loops to streamline operations repeated more than once
+- Document briefly middle-length functions, fully annotate only complex ones
 
 ### Running Tests
 
@@ -57,37 +232,15 @@ This project uses modern Python tooling for development:
 pytest
 ```
 
-### Code Quality
+### Type Checking
 
-We use Ruff as an all-in-one solution for code quality:
-
-- Format code:
-```bash
-ruff format .
-```
-
-- Lint code (includes many checks like imports, style, complexity, etc.):
-```bash
-ruff check .
-```
-
-- Type checking with MyPy:
 ```bash
 mypy mootlib tests
 ```
 
-### Code Style
+## Contributing
 
-This project follows these code style guidelines:
-- Maximum line length of 88 characters (enforced by Ruff)
-- Double quotes for strings
-- Type hints for all functions
-- Google-style docstrings for complex functions
-- Automatic import sorting with Ruff
-- Strict linting rules enforced by Ruff
-- Pathlib preferred over os.path for file operations
-- Loops preferred over repeated operations
-- Classes used sparingly and only for complex data structures
+Contributions are welcome! Please feel free to submit a Pull Request.
 
 ## License
 
