@@ -6,6 +6,7 @@ import os
 import pandas as pd
 
 dotenv.load_dotenv()
+assert os.getenv("MOOTLIB_ENCRYPTION_KEY") is not None, "MOOTLIB_ENCRYPTION_KEY is not set"
 
 if __name__ == "__main__":
     # Create data directories
