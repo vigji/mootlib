@@ -46,6 +46,6 @@ jobs:
       env:
         GH_TOKEN: ${{ secrets.GH_PAT }}
       run: |
-        gh release create latest markets.csv.encrypted embeddings.parquet.encrypted \
+        gh release create latest markets.parquet.encrypted embeddings.parquet.encrypted \
           --title "Latest Encrypted Markets" \
           --notes "Auto-uploaded on $(date +'%Y-%m-%d')"

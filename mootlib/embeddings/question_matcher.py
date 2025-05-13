@@ -1,6 +1,8 @@
 """Provides functionality for finding similar questions in the market database."""
 
 import os
+import tempfile
+import urllib.request
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -48,24 +50,18 @@ class SimilarQuestion:
 class QuestionMatcher:
     """A class for finding similar questions in the market database."""
 
+    GITHUB_RELEASE_URL = "https://github.com/vigji/mootlib/releases/download/latest/markets.parquet.encrypted"
+    TEMP_DIR = Path(tempfile.gettempdir()) / "mootlib"
+
     def __init__(
         self,
-        markets_file: str | Path | None = None,
         cache_duration_minutes: int = 30,
     ):
         """Initialize the QuestionMatcher.
 
         Args:
-            markets_file: Path to the encrypted markets file.
-            If None, looks in default location.
-            cache_duration_minutes: How long to keep the markets data in memory.
+            cache_duration_minutes: How long to keep the data in memory and cache.
         """
-        if not markets_file:
-            markets_file = (
-                Path(__file__).parent.parent.parent / "markets.parquet.encrypted"
-            )
-
-        self.markets_file = Path(markets_file)
         self.cache_duration = timedelta(minutes=cache_duration_minutes)
         self.last_refresh: datetime | None = None
         self.markets_df: pd.DataFrame | None = None
@@ -77,27 +73,37 @@ class QuestionMatcher:
                 "MOOTLIB_ENCRYPTION_KEY environment variable must be set for decryption"
             )
 
+        # Create temp directory if it doesn't exist
+        self.TEMP_DIR.mkdir(parents=True, exist_ok=True)
+        self.markets_file = self.TEMP_DIR / "markets.parquet.encrypted"
+
+    def _download_markets_file(self) -> None:
+        """Download the markets file from GitHub releases."""
+        urllib.request.urlretrieve(self.GITHUB_RELEASE_URL, self.markets_file)
+
+    def _is_cache_valid(self) -> bool:
+        """Check if the cached file is still valid."""
+        if not self.markets_file.exists():
+            return False
+
+        file_mtime = datetime.fromtimestamp(self.markets_file.stat().st_mtime)
+        return datetime.now() - file_mtime <= self.cache_duration
+
     def _ensure_fresh_data(self) -> None:
         """Ensure we have fresh market data loaded."""
         now = datetime.now()
+
+        # Check if we need to refresh the DataFrame
         if (
             self.markets_df is None
             or self.last_refresh is None
             or now - self.last_refresh > self.cache_duration
         ):
-            # Try parquet first, fall back to csv for backward compatibility
-            try:
-                self.markets_df = decrypt_to_df(self.markets_file, format="parquet")
-            except Exception:
-                # If parquet fails, try csv as fallback
-                csv_path = self.markets_file.with_suffix(".csv.encrypted")
-                if csv_path.exists():
-                    self.markets_df = decrypt_to_df(csv_path, format="csv")
-                else:
-                    raise FileNotFoundError(
-                        "No valid markets file found at "
-                        "{self.markets_file} or {csv_path}"
-                    )
+            # Check if we need to download new data
+            if not self._is_cache_valid():
+                self._download_markets_file()
+
+            self.markets_df = decrypt_to_df(self.markets_file, format="parquet")
 
             # Convert published_at to datetime if it exists
             if "published_at" in self.markets_df.columns:
