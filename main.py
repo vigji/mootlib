@@ -4,6 +4,7 @@ from pathlib import Path
 import pandas as pd
 from dotenv import load_dotenv
 
+from mootlib.scrapers.aggregate import fetch_markets_df
 from mootlib.utils.encription import encrypt_csv
 
 load_dotenv()
@@ -21,7 +22,7 @@ if __name__ == "__main__":
     data_dir.mkdir(exist_ok=True)
 
     # Fetch and save markets data
-    markets_df = pd.DataFrame(
+    test_df = pd.DataFrame(
         [
             {
                 "question": "What is the capital of France?",
@@ -30,7 +31,8 @@ if __name__ == "__main__":
                 "url": "https://example.com/markets/123",
             }
         ]
-    )  # fetch_markets_df()
+    )
+    markets_df = fetch_markets_df()
 
     # Save and encrypt directly in the root directory for GitHub release
     raw_path = data_dir / "markets.csv"
