@@ -33,10 +33,14 @@ jobs:
       run: |
         source .venv/bin/activate
         python main.py
-        
-    - name: Upload encrypted CSV to release
+    - name: Delete existing release (if any)
+      run: gh release delete latest --yes || true
       env:
-        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
-      run: |
-        gh release delete latest -y || true
-        gh release create latest markets.csv.encrypted --title "Latest Encrypted Markets" --notes "Auto-uploaded on $(date +'%Y-%m-%d')" 
+        GH_TOKEN: ${{ secrets.GH_PAT }}
+
+    - name: Create new release and upload asset
+      run: gh release create latest markets.csv.encrypted \
+        --title "Latest Encrypted Markets" \
+        --notes "Auto-uploaded on $(date +'%Y-%m-%d')"
+      env:
+        GH_TOKEN: ${{ secrets.GH_PAT }}
