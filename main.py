@@ -46,4 +46,5 @@ if __name__ == "__main__":
     print(f"Encrypted file ready at: {encrypted_path}")
     print("\nTo release, run:")
     print("gh release delete latest -y || true")
-    print(f"gh release create latest {encrypted_path} --title 'Latest Encrypted Markets' --notes 'Auto-uploaded'")
+    print(f"gh release create latest {encrypted_path} --title"
+           "'Latest Encrypted Markets' --notes 'Auto-uploaded'")
