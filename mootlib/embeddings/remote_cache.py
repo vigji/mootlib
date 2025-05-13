@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pandas as pd
 
-from mootlib.utils.encryption import decrypt_to_df, encrypt_df
+from mootlib.utils.encryption import decrypt_to_df, encrypt_dataframe
 
 
 def download_file(url: str, target_path: Path) -> None:
@@ -51,6 +51,6 @@ def upload_cache(df: pd.DataFrame, path: Path, encrypt: bool = True) -> None:
         encrypt: Whether to encrypt the file
     """
     if encrypt:
-        encrypt_df(df, path, format="parquet")
+        encrypt_dataframe(df, path, format="parquet")
     else:
         df.to_parquet(path)
