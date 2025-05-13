@@ -277,6 +277,41 @@ ruff check .
 ruff check --fix .
 ```
 
+### Repository Maintenance
+
+#### Versioning and Releases
+
+We use Git tags for versioning. The version number is automatically derived from the latest tag using `hatch-vcs`.
+
+To create a new release:
+
+1. Create and push a new tag:
+```bash
+# For a new version (e.g., v0.1.1)
+git tag -a v0.1.1 -m "Description of changes"
+git push origin v0.1.1
+```
+
+2. Go to GitHub -> Releases -> Create a new release:
+   - Choose the tag you just pushed
+   - Add detailed release notes
+   - Click "Publish release"
+
+3. The release workflow will automatically:
+   - Run all tests
+   - If tests pass, build the package
+   - Publish to PyPI using trusted publishing
+
+#### Pre-commit Hooks
+
+We use pre-commit hooks to ensure code quality. Install them with:
+
+```bash
+pre-commit install
+```
+
+This will automatically run Ruff and other checks before each commit.
+
 ### Code Style Guidelines
 
 - Maximum line length: 88 characters (enforced by Ruff)
