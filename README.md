@@ -283,24 +283,29 @@ ruff check --fix .
 
 We use Git tags for versioning. The version number is automatically derived from the latest tag using `hatch-vcs`.
 
-To create a new release:
+To create a new release, you have two options:
 
-1. Create and push a new tag:
+1. **Quick Release (via Git tag)**:
 ```bash
-# For a new version (e.g., v0.1.1)
+# Create and push a new version tag (e.g., v0.1.1)
 git tag -a v0.1.1 -m "Description of changes"
 git push origin v0.1.1
 ```
+This will automatically trigger the release workflow.
 
-2. Go to GitHub -> Releases -> Create a new release:
+2. **Full Release (via GitHub UI)**:
+   - Create and push a tag as above
+   - Go to GitHub -> Releases -> Create a new release
    - Choose the tag you just pushed
    - Add detailed release notes
    - Click "Publish release"
 
-3. The release workflow will automatically:
+In both cases, the release workflow will automatically:
    - Run all tests
    - If tests pass, build the package
    - Publish to PyPI using trusted publishing
+
+Note: Using the GitHub UI method allows you to add more detailed release notes and attachments, but both methods will publish to PyPI.
 
 #### Pre-commit Hooks
 
