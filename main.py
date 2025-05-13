@@ -12,12 +12,9 @@ assert (
 ), "MOOTLIB_ENCRYPTION_KEY is not set"
 
 if __name__ == "__main__":
-    # Create data directories
+    # Create data directory if needed
     data_dir = Path("data")
-    raw_dir = data_dir / "raw"
-    encrypted_dir = data_dir / "encrypted"
-    for dir_path in [data_dir, raw_dir, encrypted_dir]:
-        dir_path.mkdir(parents=True, exist_ok=True)
+    data_dir.mkdir(exist_ok=True)
 
     # Fetch and save markets data
     markets_df = pd.DataFrame(
@@ -31,10 +28,9 @@ if __name__ == "__main__":
         ]
     )  # fetch_markets_df()
 
-    # Save raw CSV temporarily
-    timestamp = Path("markets").with_suffix(".csv")
-    raw_path = raw_dir / timestamp
-    encrypted_path = encrypted_dir / timestamp.with_suffix(".encrypted")
+    # Save and encrypt directly in the root directory for GitHub release
+    raw_path = data_dir / "markets.csv"
+    encrypted_path = Path("markets.csv.encrypted")
 
     # Save and encrypt
     markets_df.to_csv(raw_path, index=False)
@@ -43,4 +39,7 @@ if __name__ == "__main__":
     # Clean up raw file
     raw_path.unlink()
 
-    print(f"Encrypted markets data saved to: {encrypted_path}")
+    print(f"Encrypted file ready at: {encrypted_path}")
+    print("\nTo release, run:")
+    print("gh release delete latest -y || true")
+    print(f"gh release create latest {encrypted_path} --title 'Latest Encrypted Markets' --notes 'Auto-uploaded'")

@@ -1,0 +1,35 @@
+name: Release Encrypted Markets
+
+on:
+  workflow_dispatch:  # Manual trigger
+  schedule:
+    - cron: '0 0 * * *'  # Daily at midnight UTC
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+        
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -e .
+        
+    - name: Generate encrypted markets file
+      env:
+        MOOTLIB_ENCRYPTION_KEY: ${{ secrets.MOOTLIB_ENCRYPTION_KEY }}
+      run: python main.py
+        
+    - name: Upload encrypted CSV to release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+      run: |
+        gh release delete latest -y || true
+        gh release create latest markets.csv.encrypted --title "Latest Encrypted Markets" --notes "Auto-uploaded on $(date +'%Y-%m-%d')" 
