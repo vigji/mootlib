@@ -1,4 +1,4 @@
-"""Main API for Mootlib - a library for finding similar prediction market questions.
+r"""Main API for Mootlib - a library for finding similar prediction market questions.
 
 This module provides the main interface for interacting with Mootlib. It allows users
 to:
@@ -10,9 +10,7 @@ Example:
     >>> from mootlib import MootlibMatcher
     >>> matcher = MootlibMatcher()
     >>> similar = matcher.find_similar_questions(
-    ...     "Will Russia invade Moldova in 2024?",
-    ...     n_results=3,
-    ...     min_similarity=0.7
+    ...     "Will Russia invade Moldova in 2024?", n_results=3, min_similarity=0.7
     ... )
     >>> for q in similar:
     ...     print(f"\\n{q}")
@@ -91,7 +89,7 @@ class SimilarQuestion:
 
 
 class MootlibMatcher:
-    """Main interface for finding similar questions across prediction markets.
+    r"""Main interface for finding similar questions across prediction markets.
 
     This class provides the primary API for Mootlib. It handles:
     - Downloading and caching market data from GitHub releases
@@ -105,10 +103,8 @@ class MootlibMatcher:
     Example:
         >>> matcher = MootlibMatcher()
         >>> # Find similar questions
-        >>> similar = matcher.find_similar_questions(
-        ...     "Will SpaceX reach Mars by 2025?",
-        ...     n_results=3
-        ... )
+        >>> similar = matcher.find_similar_questions(" SpaceX reach Mars by 2025?",
+        >>>                                          n_results=3)
         >>> for q in similar:
         ...     print(f"\\n{q}")
         >>> # Access raw dataframes
@@ -227,7 +223,7 @@ class MootlibMatcher:
         n_results: int = 5,
         min_similarity: float = 0.5,
     ) -> list[SimilarQuestion]:
-        """Find questions similar to the query across all prediction markets.
+        r"""Find questions similar to the query across all prediction markets.
 
         This method searches through all available prediction market questions
         to find those most semantically similar to your query. It uses
@@ -249,8 +245,7 @@ class MootlibMatcher:
         Example:
             >>> matcher = MootlibMatcher()
             >>> similar = matcher.find_similar_questions(
-            ...     "Will Tesla stock reach $300 in 2024?",
-            ...     n_results=3,
+            ...     "Will Tesla stock reach $300 in 2024?", n_results=3,
             ...     min_similarity=0.7
             ... )
             >>> for q in similar:

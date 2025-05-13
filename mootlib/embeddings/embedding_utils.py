@@ -30,6 +30,8 @@ def compute_string_hash(text: str) -> str:
 
 
 class EmbeddingsCache:
+    """Cache for embeddings."""
+
     def __init__(
         self,
         cache_path: Path | None = None,
@@ -108,7 +110,9 @@ class EmbeddingsCache:
         # Find which texts need to be embedded
         uncached_mask = [h not in self.cache_df.index for h in text_hashes]
         texts_to_embed = [
-            t for t, needs_embed in zip(texts, uncached_mask) if needs_embed
+            t
+            for t, needs_embed in zip(texts, uncached_mask, strict=False)
+            if needs_embed
         ]
 
         # Embed new texts if any and update cache
@@ -133,7 +137,7 @@ class EmbeddingsCache:
                 self.cache_df.loc[h, "embedding"]
                 if h in self.cache_df.index
                 else self._embed_texts([t])[0]
-                for h, t in zip(text_hashes, texts)
+                for h, t in zip(text_hashes, texts, strict=False)
             ]
         )
 

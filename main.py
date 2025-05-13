@@ -25,7 +25,7 @@ def download_latest_release_file(filename: str) -> bool:
         url = f"https://github.com/vigji/mootlib/releases/download/latest/{filename}"
         response = requests.get(url, allow_redirects=True)
         response.raise_for_status()
-        with open(filename, "wb") as f:
+        with Path(filename).open("wb") as f:
             f.write(response.content)
         return True
     except Exception:
@@ -47,7 +47,7 @@ if __name__ == "__main__":
         print("Loading existing embeddings cache...")
         # Load the encrypted cache directly
         temp_cache_path = data_dir / "temp_embeddings.parquet"
-        with open("embeddings.parquet.encrypted", "rb") as f:
+        with Path("embeddings.parquet.encrypted").open("rb") as f:
             encrypted_data = f.read()
         decrypted_df = decrypt_to_df(encrypted_data, format="parquet")
         decrypted_df.to_parquet(temp_cache_path)

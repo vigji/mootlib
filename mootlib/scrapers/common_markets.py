@@ -52,7 +52,6 @@ class BaseMarket(ABC):
     @classmethod
     def parse_datetime_flexible(cls, dt_str: str | datetime | None) -> datetime | None:
         """Parse a datetime string from a variety of formats."""
-
         # Try ISO format with 'Z' (UTC)
         if isinstance(dt_str, datetime):  # Already a datetime object
             return dt_str

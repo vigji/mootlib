@@ -106,9 +106,11 @@ ignore = [
     "BLE001",      # Do not catch blind exception
     "C901",        # Function is too complex
     "PLR2004",     # Magic numbers, catches too much
+    "PD901",       # Pandas vet
+    "TRY003",      # Keep error messages with info
 ]
 
-[tool.ruff.per-file-ignores]
+[tool.ruff.lint.per-file-ignores]
 "tests/*" = [
     "D100",        # Missing module docstring in tests
     "D101",        # Missing class docstring in tests
@@ -117,7 +119,7 @@ ignore = [
     "S101",        # Use of assert in tests
 ]
 
-[tool.ruff.pydocstyle]
+[tool.ruff.lint.pydocstyle]
 convention = "google"
 
 [tool.ruff.format]
