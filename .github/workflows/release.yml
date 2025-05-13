@@ -39,8 +39,9 @@ jobs:
         GH_TOKEN: ${{ secrets.GH_PAT }}
 
     - name: Create new release and upload asset
-      run: gh release create latest markets.csv.encrypted \
-        --title "Latest Encrypted Markets" \
-        --notes "Auto-uploaded on $(date +'%Y-%m-%d')"
       env:
         GH_TOKEN: ${{ secrets.GH_PAT }}
+      run: |
+        gh release create latest markets.csv.encrypted \
+          --title "Latest Encrypted Markets" \
+          --notes "Auto-uploaded on $(date +'%Y-%m-%d')"
