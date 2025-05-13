@@ -52,9 +52,9 @@ for i in (0, 2, *np.random.Generator.integers(0, len(embedded_df), 10)):
     example = embedded_df.iloc[i]
 
 
-
-def reduce_dimensions(embeddings_data: np.ndarray | pd.DataFrame,
-                     n_components: int = 2) -> np.ndarray:
+def reduce_dimensions(
+    embeddings_data: np.ndarray | pd.DataFrame, n_components: int = 2
+) -> np.ndarray:
     """Reduce dimensionality of embeddings using UMAP."""
     tsne = TSNE(n_components=n_components, random_state=42)
     return tsne.fit_transform(embeddings_data)

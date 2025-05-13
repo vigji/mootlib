@@ -289,10 +289,12 @@ class ManifoldScraper(BaseScraper):
 
         markets_to_fetch_details_for_ids: list[str] = []
         for m_summary in raw_markets_list_paginated:
-            if (only_open and m_summary.get("isResolved", False)
+            if (
+                (only_open and m_summary.get("isResolved", False))
                 or m_summary.get("uniqueBettorCount", 0) < min_unique_bettors
                 or m_summary.get("volume", 0) < min_volume
-                or m_summary.get("outcomeType") not in ["BINARY", "MULTIPLE_CHOICE"]):
+                or m_summary.get("outcomeType") not in ["BINARY", "MULTIPLE_CHOICE"]
+            ):
                 continue
             markets_to_fetch_details_for_ids.append(m_summary["id"])
 

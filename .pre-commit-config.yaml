@@ -1,0 +1,10 @@
+default_language_version:
+    python: python3.12  # Match your Python version
+
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.2.1  # Use the same version as in pyproject.toml
+    hooks:
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format
