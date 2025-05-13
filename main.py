@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 from mootlib.embeddings.embedding_utils import EmbeddingsCache
 from mootlib.scrapers.aggregate import fetch_markets_df
-from mootlib.utils.encription import decrypt_to_df, encrypt_csv
+from mootlib.utils.encription import decrypt_to_df, encrypt_csv, encrypt_file
 
 load_dotenv()
 
@@ -49,7 +49,7 @@ if __name__ == "__main__":
         temp_cache_path = data_dir / "temp_embeddings.parquet"
         with open("embeddings.parquet.encrypted", "rb") as f:
             encrypted_data = f.read()
-        decrypted_df = decrypt_to_df(encrypted_data)
+        decrypted_df = decrypt_to_df(encrypted_data, is_parquet=True)
         decrypted_df.to_parquet(temp_cache_path)
         cache = EmbeddingsCache(cache_path=temp_cache_path)
         temp_cache_path.unlink()
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     encrypted_cache_path = Path("embeddings.parquet.encrypted")
 
     cache.cache_df.to_parquet(raw_cache_path)
-    encrypt_csv(raw_cache_path, encrypted_cache_path)
+    encrypt_file(raw_cache_path, encrypted_cache_path)
 
     # Clean up raw files
     raw_path.unlink()
