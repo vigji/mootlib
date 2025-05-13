@@ -16,11 +16,11 @@ from mootlib.scrapers.predictit import PredictItScraper
 
 __all__ = [
     "BaseScraper",
-    "fetch_markets_df",
     "GoodJudgmentOpenScraper",
     "ManifoldScraper",
     "MarketFilter",
     "PolymarketGammaScraper",
     "PooledMarket",
     "PredictItScraper",
+    "fetch_markets_df",
 ]

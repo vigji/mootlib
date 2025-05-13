@@ -57,7 +57,7 @@ class MetaculusMarket(BaseMarket):
             question=question.question_text,
             outcomes=["yes", "no"],
             outcome_probabilities=[prob, 1 - prob],
-            formatted_outcomes=f"Yes {prob:.2f}; No {1-prob:.2f}",
+            formatted_outcomes=f"Yes {prob:.2f}; No {1 - prob:.2f}",
             url=question.page_url,
             published_time=question.published_time,
             n_forecasters=question.num_forecasters,

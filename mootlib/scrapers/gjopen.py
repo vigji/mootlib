@@ -73,7 +73,7 @@ class GJOpenMarket(BaseMarket):
         outcomes_parts = []
         for a in outcomes_list:
             prob_str = (
-                f"{a.probability*100:.1f}%" if a.probability is not None else "N/A"
+                f"{a.probability * 100:.1f}%" if a.probability is not None else "N/A"
             )
             outcomes_parts.append(f"{a.name.strip()}: {prob_str}")
 
