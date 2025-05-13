@@ -30,7 +30,9 @@ jobs:
     - name: Generate encrypted markets file
       env:
         MOOTLIB_ENCRYPTION_KEY: ${{ secrets.MOOTLIB_ENCRYPTION_KEY }}
-      run: python main.py
+      run: |
+        source .venv/bin/activate
+        python main.py
         
     - name: Upload encrypted CSV to release
       env:
