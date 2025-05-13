@@ -1,5 +1,6 @@
 import hashlib
 import os
+from collections.abc import Sequence
 from pathlib import Path
 
 import dotenv
@@ -10,6 +11,8 @@ from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
 
 model = "BAAI/bge-m3"
+EMBEDDING_DIM = 1024  # BGE-M3 embedding dimension
+MAX_CHUNK_SIZE = 1024
 
 # Create an OpenAI client with your deepinfra token and endpoint
 openai = OpenAI(
@@ -21,81 +24,132 @@ dotenv.load_dotenv(Path(__file__).parent.parent / ".env")
 os.getenv("DEEPINFRA_TOKEN")
 
 
-def preprocess_questions(questions_list):
-    """Preprocess a list of questions."""
-    return [q.strip() for q in questions_list]
+def compute_string_hash(text: str) -> str:
+    """Compute a hash for a single string."""
+    return hashlib.sha256(text.strip().encode()).hexdigest()
 
 
-def _embed_all_questions(questions_list):
-    """Embed all questions."""
-    questions_list = preprocess_questions(questions_list)
-    embeddings = openai.embeddings.create(
-        model=model,
-        input=questions_list,
-        encoding_format="float",
-    )
-    return np.array([embedding.embedding for embedding in embeddings.data])
+class EmbeddingsCache:
+    def __init__(
+        self,
+        cache_path: Path | None = None,
+        model: str = "BAAI/bge-m3",
+        embedding_dim: int = 1024,
+        chunk_size: int = 1024,
+    ):
+        """Initialize embeddings cache.
 
+        Args:
+            cache_path: Path to cache file. If None, uses default path.
+            model: Model to use for embeddings.
+            embedding_dim: Dimension of embeddings.
+            chunk_size: Maximum chunk size for batch processing.
+        """
+        if cache_path is None:
+            cache_path = (
+                Path(__file__).parent / "embeddings_cache" / "embeddings.parquet"
+            )
+        self.cache_path = cache_path
+        self.cache_path.parent.mkdir(parents=True, exist_ok=True)
 
-def _embed_in_chunks(questions_list, chunk_size=200):
-    questions_list = preprocess_questions(questions_list)
-    embeddings_list = []
-    for i in tqdm(range(0, len(questions_list), chunk_size)):
-        chunk = questions_list[i : i + chunk_size]
+        self.model = model
+        self.embedding_dim = embedding_dim
+        self.chunk_size = chunk_size
+
+        # Load or create cache
+        if self.cache_path.exists():
+            self.cache_df = pd.read_parquet(self.cache_path)
+        else:
+            self.cache_df = pd.DataFrame(
+                columns=["text_hash", "text", "embedding"]
+            ).set_index("text_hash")
+            self.save_cache()
+
+    def save_cache(self):
+        """Save cache to disk."""
+        self.cache_df.to_parquet(self.cache_path)
+
+    def _embed_batch(self, texts: Sequence[str]) -> np.ndarray:
+        """Embed a batch of texts using the model."""
+        if not texts:
+            return np.array([])
+
         embeddings = openai.embeddings.create(
-            model=model,
-            input=chunk,
+            model=self.model,
+            input=texts,
             encoding_format="float",
         )
-        embeddings_list.extend(embeddings.data)
+        return np.array([embedding.embedding for embedding in embeddings.data])
 
-    return np.array([embedding.embedding for embedding in embeddings_list])
+    def _embed_texts(self, texts: Sequence[str]) -> np.ndarray:
+        """Embed texts, potentially in chunks."""
+        if not texts:
+            return np.array([])
+
+        if len(texts) <= self.chunk_size:
+            return self._embed_batch(texts)
+
+        # Process in chunks
+        embeddings_list = []
+        for i in tqdm(range(0, len(texts), self.chunk_size)):
+            chunk = texts[i : i + self.chunk_size]
+            chunk_embeddings = self._embed_batch(chunk)
+            embeddings_list.append(chunk_embeddings)
+
+        return np.vstack(embeddings_list)
+
+    def get_embeddings(
+        self, texts: Sequence[str], update_cache: bool = True
+    ) -> np.ndarray:
+        """Get embeddings for texts, using cache and updating it if needed."""
+        texts = [t.strip() for t in texts]
+        text_hashes = [compute_string_hash(t) for t in texts]
+
+        # Find which texts need to be embedded
+        uncached_mask = [h not in self.cache_df.index for h in text_hashes]
+        texts_to_embed = [
+            t for t, needs_embed in zip(texts, uncached_mask) if needs_embed
+        ]
+
+        # Embed new texts if any and update cache
+        if texts_to_embed and update_cache:
+            new_embeddings = self._embed_texts(texts_to_embed)
+            new_hashes = [compute_string_hash(t) for t in texts_to_embed]
+
+            new_entries = pd.DataFrame(
+                {
+                    "text_hash": new_hashes,
+                    "text": texts_to_embed,
+                    "embedding": list(new_embeddings),
+                }
+            ).set_index("text_hash")
+
+            self.cache_df = pd.concat([self.cache_df, new_entries])
+            self.save_cache()
+
+        # Return embeddings in original order
+        return np.array(
+            [
+                self.cache_df.loc[h, "embedding"]
+                if h in self.cache_df.index
+                else self._embed_texts([t])[0]
+                for h, t in zip(text_hashes, texts)
+            ]
+        )
+
+    def embed_df(
+        self,
+        df: pd.DataFrame,
+        text_column: str,
+        update_cache: bool = True,
+    ) -> pd.DataFrame:
+        """Embed texts from a DataFrame column."""
+        texts = df[text_column].tolist()
+        embeddings = self.get_embeddings(texts, update_cache=update_cache)
+        return pd.DataFrame(embeddings, index=df.index)
 
 
-def embed_list(questions_list, chunk_size=None):
-    """Embed a list of questions."""
-    if chunk_size is None:
-        embeddings = _embed_all_questions(questions_list)
-    else:
-        embeddings = _embed_in_chunks(questions_list, chunk_size)
-
-    return embeddings
-
-
-def embed_list_with_cache(questions_list, cache_folder=None, chunk_size=None):
-    """Embed only if the cache file does not exist. Use list hash to name the file."""
-    if cache_folder is None:
-        cache_folder = Path(__file__).parent / "embeddings_cache"
-    cache_folder.mkdir(parents=True, exist_ok=True)
-
-    cache_file = (
-        cache_folder / f"{hashlib.sha256(str(questions_list).encode()).hexdigest()}.npy"
-    )
-
-    if cache_file.exists():
-        return np.load(cache_file)
-    else:
-        embeddings_array = embed_list(questions_list, chunk_size)
-        np.save(cache_file, embeddings_array)
-        return embeddings_array
-
-
-def embed_questions_df(question_df, question_column="question", cache_folder=None):
-    """Embed a dataframe of questions."""
-    questions_list = question_df[question_column].to_list()
-    n_questions = len(questions_list)
-    chunk_size = 1024 if n_questions > 1024 else None
-
-    sanitized_questions = [q.strip() for q in questions_list]
-    embeddings_array = embed_list_with_cache(
-        sanitized_questions,
-        chunk_size=chunk_size,
-        cache_folder=cache_folder,
-    )
-    return pd.DataFrame(embeddings_array, index=question_df.index)
-
-
-def get_distance_matrix(combined_df):
+def get_distance_matrix(combined_df: pd.DataFrame) -> np.ndarray:
     """Create a distance matrix of the embeddings."""
     embeddings = combined_df.drop(
         ["source_platform", "question", "formatted_outcomes"],
@@ -104,21 +158,18 @@ def get_distance_matrix(combined_df):
     cosine_similarity_matrix = cosine_similarity(embeddings)
     distance_matrix = 1 - cosine_similarity_matrix
     np.fill_diagonal(distance_matrix, np.inf)
-
     return distance_matrix
 
 
 def get_closest_questions(row, distance_matrix, df, n_closest=20):
-    """Get the 10 closest questions from the distance matrix."""
+    """Get the closest questions from the distance matrix."""
     question_index = row.name
     distances = distance_matrix[question_index]
 
-    # Keep getting more indices until we have enough Polymarket questions
-    n_to_fetch = n_closest
-    poly_questions = []
-    closest_indices = np.argsort(distances)[:n_to_fetch]
+    closest_indices = np.argsort(distances)[:n_closest]
     closest_questions = df.iloc[closest_indices]
-    poly_questions = [
+
+    return [
         (q, a, source, distance)
         for q, a, source, distance in zip(
             closest_questions["question"].tolist(),
@@ -128,16 +179,37 @@ def get_closest_questions(row, distance_matrix, df, n_closest=20):
             strict=False,
         )
         if source != "Metaculus"
-    ]
-
-    return poly_questions[:n_closest]
+    ][:n_closest]
 
 
 if __name__ == "__main__":
-    test_questions = [
-        "What is the capital of France?",
-        "What is the capital of Germany?",
-    ] * 20
-    # a = embed_list(test_questions)
-    a = embed_list(test_questions, chunk_size=10)
-    # b = embed_list_with_cache(test_questions, Path(__file__).parent / "cache")
+    from pathlib import Path
+    from time import time
+
+    from mootlib.utils.encription import decrypt_to_df
+
+    # Load encrypted data
+    markets_file = Path(__file__).parent.parent.parent / "markets.csv.encrypted"
+    markets_df = decrypt_to_df(markets_file)
+
+    # Initialize cache
+    cache = EmbeddingsCache()
+
+    # First run - should compute all embeddings
+    print("\nFirst run - computing and caching embeddings...")
+    t0 = time()
+    embeddings_df = cache.embed_df(markets_df, "question")
+    print(f"First run took {time() - t0:.2f} seconds")
+    print(f"Embedded {len(markets_df)} questions")
+    print(f"Cache size: {len(cache.cache_df)} entries")
+
+    # Second run - should use cache
+    print("\nSecond run - should use cache...")
+    t0 = time()
+    embeddings_df_2 = cache.embed_df(markets_df, "question")
+    print(f"Second run took {time() - t0:.2f} seconds")
+
+    # Verify results are identical
+    print("\nVerifying results...")
+    assert (embeddings_df == embeddings_df_2).all().all(), "Cache differences!"
+    print("Success! Both runs produced identical embeddings")

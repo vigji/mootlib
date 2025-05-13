@@ -31,6 +31,7 @@ if __name__ == "__main__":
         ]
     )
     markets_df = fetch_markets_df()
+    print(len(markets_df))
 
     # Save and encrypt directly in the root directory for GitHub release
     raw_path = data_dir / "markets.csv"
