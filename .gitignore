@@ -178,3 +178,7 @@ data/
 
 .research_cache.json
 .env
+
+# Embeddings cache
+embeddings_cache/
+*.parquet

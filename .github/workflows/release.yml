@@ -27,7 +27,7 @@ jobs:
         uv venv
         uv pip install -e ".[dev]"
         
-    - name: Generate encrypted markets file
+    - name: Generate encrypted files
       env:
         MOOTLIB_ENCRYPTION_KEY: ${{ secrets.MOOTLIB_ENCRYPTION_KEY }}
         DEEPINFRA_TOKEN: ${{ secrets.DEEPINFRA_TOKEN }}
@@ -36,15 +36,16 @@ jobs:
       run: |
         source .venv/bin/activate
         python main.py
+
     - name: Delete existing release (if any)
       run: gh release delete latest --yes || true
       env:
         GH_TOKEN: ${{ secrets.GH_PAT }}
 
-    - name: Create new release and upload asset
+    - name: Create new release and upload assets
       env:
         GH_TOKEN: ${{ secrets.GH_PAT }}
       run: |
-        gh release create latest markets.csv.encrypted \
+        gh release create latest markets.csv.encrypted embeddings.parquet.encrypted \
           --title "Latest Encrypted Markets" \
           --notes "Auto-uploaded on $(date +'%Y-%m-%d')"
