@@ -94,6 +94,7 @@ ignore = [
     "ARG002",      # Unused method argument
     "BLE001",      # Do not catch blind exception
     "C901",        # Function is too complex
+    "PLR2004",     # Magic numbers, catches too much
 ]
 
 [tool.ruff.per-file-ignores]

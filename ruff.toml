@@ -1,6 +1,6 @@
 # Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
 select = ["E", "F", "I", "N", "UP", "PL", "RUF"]
-ignore = []
+ignore = ["PLR2004"]  # Allow magic numbers
 
 # Same as Black.
 line-length = 88

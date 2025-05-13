@@ -50,17 +50,12 @@ class BaseMarket(ABC):
         """
 
     @classmethod
-    def parse_datetime_flexible(cls, dt_str: str | None) -> datetime | None:
+    def parse_datetime_flexible(cls, dt_str: str | datetime | None) -> datetime | None:
         """Parse a datetime string from a variety of formats."""
-        if not dt_str:
-            return None
 
         # Try ISO format with 'Z' (UTC)
         if isinstance(dt_str, datetime):  # Already a datetime object
             return dt_str
-
-        if not isinstance(dt_str, str):
-            return None
 
         try:
             # Handle timezone-aware strings ending with Z
