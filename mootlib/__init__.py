@@ -7,7 +7,7 @@ try:
 except metadata.PackageNotFoundError:  # pragma: no cover
     __version__ = "unknown"
 
-from mootlib.scrapers.aggregate import fetch_all_markets
+from mootlib.scrapers.aggregate import fetch_markets_df
 from mootlib.scrapers.common_markets import BaseScraper, MarketFilter, PooledMarket
 from mootlib.scrapers.gjopen import GoodJudgmentOpenScraper
 from mootlib.scrapers.manifold_markets import ManifoldScraper
@@ -15,7 +15,7 @@ from mootlib.scrapers.polymarket_gamma import PolymarketGammaScraper
 from mootlib.scrapers.predictit import PredictItScraper
 
 __all__ = [
-    "fetch_all_markets",
+    "fetch_markets_df",
     "BaseScraper",
     "MarketFilter",
     "PooledMarket",
