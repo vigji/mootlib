@@ -1,6 +1,0 @@
----
-description: 
-globs: 
-alwaysApply: false
----
-Always comply to the formatting specifications defines in [pyproject.toml](mdc:pyproject.toml) when formatting your code
