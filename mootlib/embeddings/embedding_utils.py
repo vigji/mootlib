@@ -186,7 +186,7 @@ if __name__ == "__main__":
     from pathlib import Path
     from time import time
 
-    from mootlib.utils.encription import decrypt_to_df
+    from mootlib.utils.encryption import decrypt_to_df
 
     # Load encrypted data
     markets_file = Path(__file__).parent.parent.parent / "markets.csv.encrypted"

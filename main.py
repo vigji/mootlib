@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 
 from mootlib.embeddings.embedding_utils import EmbeddingsCache
 from mootlib.scrapers.aggregate import fetch_markets_df
-from mootlib.utils.encription import decrypt_to_df, encrypt_csv, encrypt_file
+from mootlib.utils.encryption import decrypt_to_df, encrypt_dataframe
 
 load_dotenv()
 
@@ -45,11 +45,11 @@ if __name__ == "__main__":
     cache = EmbeddingsCache()
     if cache_exists:
         print("Loading existing embeddings cache...")
-        # Decrypt and load the cache into a temporary file
+        # Load the encrypted cache directly
         temp_cache_path = data_dir / "temp_embeddings.parquet"
         with open("embeddings.parquet.encrypted", "rb") as f:
             encrypted_data = f.read()
-        decrypted_df = decrypt_to_df(encrypted_data, is_parquet=True)
+        decrypted_df = decrypt_to_df(encrypted_data, format="parquet")
         decrypted_df.to_parquet(temp_cache_path)
         cache = EmbeddingsCache(cache_path=temp_cache_path)
         temp_cache_path.unlink()
@@ -66,19 +66,19 @@ if __name__ == "__main__":
     print("Done computing embeddings")
 
     # Save and encrypt markets data
-    raw_path = data_dir / "markets.csv"
-    encrypted_path = Path("markets.csv.encrypted")
+    raw_path = data_dir / "markets.parquet"
+    encrypted_path = Path("markets.parquet.encrypted")
 
     # Save and encrypt markets
-    markets_df.to_csv(raw_path, index=False)
-    encrypt_csv(raw_path, encrypted_path)
+    markets_df.to_parquet(raw_path)
+    encrypt_dataframe(markets_df, encrypted_path)
 
     # Save and encrypt embeddings cache
     raw_cache_path = data_dir / "embeddings.parquet"
     encrypted_cache_path = Path("embeddings.parquet.encrypted")
 
     cache.cache_df.to_parquet(raw_cache_path)
-    encrypt_file(raw_cache_path, encrypted_cache_path)
+    encrypt_dataframe(cache.cache_df, encrypted_cache_path)
 
     # Clean up raw files
     raw_path.unlink()
