@@ -1,8 +1,5 @@
 import asyncio
-import json
-import time
-from datetime import datetime
-from pathlib import Path
+import logging
 
 import pandas as pd
 
@@ -13,31 +10,9 @@ from mootlib.scrapers.metaculus import MetaculusScraper
 from mootlib.scrapers.polymarket_gamma import PolymarketGammaScraper
 from mootlib.scrapers.predictit import PredictItScraper
 
-
-def _save_markets_to_cache(markets: list[PooledMarket], platform: str) -> Path:
-    """Save markets to a cache file with timestamp."""
-    cache_dir = Path("data/cache")
-    cache_dir.mkdir(parents=True, exist_ok=True)
-
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    cache_file = cache_dir / f"{platform}_{timestamp}.json"
-
-    # Convert markets to dict, handling datetime serialization
-    market_dicts = []
-    for market in markets:
-        market_dict = market.__dict__.copy()
-        market_dict.pop("raw_market_data", None)
-
-        # Convert datetime to string if present
-        if "published_at" in market_dict and market_dict["published_at"] is not None:
-            market_dict["published_at"] = market_dict["published_at"].isoformat()
-
-        market_dicts.append(market_dict)
-
-    with cache_file.open("w") as f:
-        json.dump(market_dicts, f, indent=2)
-
-    return cache_file
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 async def _fetch_platform_markets(
@@ -46,18 +21,19 @@ async def _fetch_platform_markets(
 ) -> tuple[str, list[PooledMarket]]:
     """Fetch markets from a single platform."""
     platform_name = scraper.__class__.__name__.replace("Scraper", "")
-    time.time()
+    logger.info(f"Starting market fetch for {platform_name}")
 
     try:
-        async with scraper:  # Use async context manager for proper session handling
+        async with scraper:  #  async context manager for proper session handling
             markets = await scraper.get_pooled_markets(only_open=only_open)
-
-            # Save to cache
-            _save_markets_to_cache(markets, platform_name)
-
-            time.time()
+            logger.info(f"Fetched {len(markets)} markets from {platform_name}")
             return platform_name, markets
-    except Exception:
+    except Exception as e:
+        logger.error(
+            f"Failed to fetch markets from {platform_name}",
+            exc_info=True,
+            extra={"error": str(e)},
+        )
         return platform_name, []
 
 
@@ -78,6 +54,8 @@ async def _fetch_all_markets(only_open: bool = True) -> list[PooledMarket]:
         MetaculusScraper(),
     ]
 
+    logger.info(f"Starting parallel fetch for {len(scrapers)} platforms")
+
     # Fetch from all platforms in parallel
     results = await asyncio.gather(
         *[_fetch_platform_markets(scraper, only_open) for scraper in scrapers],
@@ -86,12 +64,24 @@ async def _fetch_all_markets(only_open: bool = True) -> list[PooledMarket]:
 
     # Combine results, handling any exceptions
     all_markets: list[PooledMarket] = []
+    failed_platforms = []
+
     for result in results:
         if isinstance(result, Exception):
+            logger.error("Unexpected error during market fetch", exc_info=result)
             continue
-        platform_name, markets = result
-        all_markets.extend(markets)
 
+        platform_name, markets = result
+        if not markets:  # Empty list indicates failure in _fetch_platform_markets
+            failed_platforms.append(platform_name)
+        else:
+            all_markets.extend(markets)
+            logger.info(f"Added {len(markets)} markets from {platform_name}")
+
+    if failed_platforms:
+        logger.warning(f"Failed to fetch markets from: {', '.join(failed_platforms)}")
+
+    logger.info(f"Successfully fetched {len(all_markets)} markets in total")
     return all_markets
 
 
@@ -116,6 +106,7 @@ def _create_markets_dataframe(markets: list[PooledMarket]) -> pd.DataFrame:
 
     all_markets_df = pd.DataFrame(market_dicts)
     all_markets_df = all_markets_df.drop_duplicates(subset=["question"])
+
     # Handle published_at column if it exists
     if "published_at" in all_markets_df.columns:
         try:
@@ -130,32 +121,27 @@ def _create_markets_dataframe(markets: list[PooledMarket]) -> pd.DataFrame:
             )
 
             all_markets_df = all_markets_df.sort_values("published_at", ascending=False)
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning(
+                "Failed to process published_at dates",
+                exc_info=True,
+                extra={"error": str(e)},
+            )
 
     return all_markets_df
 
 
-def fetch_markets_df() -> None:
+def fetch_markets_df() -> pd.DataFrame:
     """Main function to run the market aggregation."""
-    time.time()
+    logger.info("Starting market aggregation")
 
     # Fetch markets from all platforms
     all_markets = asyncio.run(_fetch_all_markets(only_open=True))
 
     # Create DataFrame
     markets_df = _create_markets_dataframe(all_markets)
+    logger.info(f"Created DataFrame with {len(markets_df)} unique markets")
 
-    time.time()
-
-    # Print summary by platform
-
-    # Save to CSV
-    # output_path = Path("data/combined_markets.csv")
-    # output_path.parent.mkdir(parents=True, exist_ok=True)
-    # markets_df.to_csv(output_path, index=False)
-
-    # Print sample of the data
     return markets_df
 
 
