@@ -160,4 +160,5 @@ def fetch_markets_df() -> None:
 
 
 if __name__ == "__main__":
-    markets_df = main()
+    markets_df = fetch_markets_df()
+    print(markets_df)
