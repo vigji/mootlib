@@ -6,10 +6,10 @@ from typing import Any
 import aiohttp
 from tqdm import tqdm
 
-from mootlib.scrapers.common_markets import BaseScraper, PooledMarket, MarketFilter
-
+from mootlib.scrapers.common_markets import BaseScraper, MarketFilter, PooledMarket
 
 DEFAULT_MARKET_FILTER = MarketFilter(min_n_forecasters=50)
+
 
 @dataclass
 class ManifoldAnswer:

@@ -10,7 +10,7 @@ class MarketFilter:
 
     min_n_forecasters: int = 0
     min_comments_count: int = 0
-    min_volume: float = 0.
+    min_volume: float = 0.0
     only_open: bool = True
 
 

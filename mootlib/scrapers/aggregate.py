@@ -14,7 +14,7 @@ from mootlib.scrapers.polymarket_gamma import PolymarketGammaScraper
 from mootlib.scrapers.predictit import PredictItScraper
 
 
-def save_markets_to_cache(markets: list[PooledMarket], platform: str) -> Path:
+def _save_markets_to_cache(markets: list[PooledMarket], platform: str) -> Path:
     """Save markets to a cache file with timestamp."""
     cache_dir = Path("data/cache")
     cache_dir.mkdir(parents=True, exist_ok=True)
@@ -40,7 +40,7 @@ def save_markets_to_cache(markets: list[PooledMarket], platform: str) -> Path:
     return cache_file
 
 
-async def fetch_platform_markets(
+async def _fetch_platform_markets(
     scraper,
     only_open: bool,
 ) -> tuple[str, list[PooledMarket]]:
@@ -53,7 +53,7 @@ async def fetch_platform_markets(
             markets = await scraper.get_pooled_markets(only_open=only_open)
 
             # Save to cache
-            save_markets_to_cache(markets, platform_name)
+            _save_markets_to_cache(markets, platform_name)
 
             time.time()
             return platform_name, markets
@@ -61,7 +61,7 @@ async def fetch_platform_markets(
         return platform_name, []
 
 
-async def fetch_all_markets(only_open: bool = True) -> list[PooledMarket]:
+async def _fetch_all_markets(only_open: bool = True) -> list[PooledMarket]:
     """Fetch markets from all available platforms in parallel.
 
     Args:
@@ -80,7 +80,7 @@ async def fetch_all_markets(only_open: bool = True) -> list[PooledMarket]:
 
     # Fetch from all platforms in parallel
     results = await asyncio.gather(
-        *[fetch_platform_markets(scraper, only_open) for scraper in scrapers],
+        *[_fetch_platform_markets(scraper, only_open) for scraper in scrapers],
         return_exceptions=True,  # Handle exceptions gracefully
     )
 
@@ -95,7 +95,7 @@ async def fetch_all_markets(only_open: bool = True) -> list[PooledMarket]:
     return all_markets
 
 
-def create_markets_dataframe(markets: list[PooledMarket]) -> pd.DataFrame:
+def _create_markets_dataframe(markets: list[PooledMarket]) -> pd.DataFrame:
     """Convert a list of PooledMarket objects to a pandas DataFrame.
 
     Args:
@@ -136,27 +136,28 @@ def create_markets_dataframe(markets: list[PooledMarket]) -> pd.DataFrame:
     return all_markets_df
 
 
-async def main() -> None:
+def fetch_markets_df() -> None:
     """Main function to run the market aggregation."""
     time.time()
 
     # Fetch markets from all platforms
-    all_markets = await fetch_all_markets(only_open=True)
+    all_markets = asyncio.run(_fetch_all_markets(only_open=True))
 
     # Create DataFrame
-    markets_df = create_markets_dataframe(all_markets)
+    markets_df = _create_markets_dataframe(all_markets)
 
     time.time()
 
     # Print summary by platform
 
     # Save to CSV
-    output_path = Path("data/combined_markets.csv")
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    markets_df.to_csv(output_path, index=False)
+    # output_path = Path("data/combined_markets.csv")
+    # output_path.parent.mkdir(parents=True, exist_ok=True)
+    # markets_df.to_csv(output_path, index=False)
 
     # Print sample of the data
+    return markets_df
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    markets_df = main()
