@@ -182,3 +182,5 @@ data/
 # Embeddings cache
 embeddings_cache/
 *.parquet
+
+.cursor/
