@@ -7,6 +7,10 @@ import pandas as pd
 from mootlib.utils.encription import encrypt_csv
 
 dotenv.load_dotenv()
+
+# print all available environment variables
+print(os.environ)
+
 assert (
     os.getenv("MOOTLIB_ENCRYPTION_KEY") is not None
 ), "MOOTLIB_ENCRYPTION_KEY is not set"
