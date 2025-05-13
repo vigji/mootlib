@@ -4,7 +4,7 @@ on:
   workflow_dispatch:  # Manual trigger
   push:  # Run on push events
   schedule:
-    - cron: '0 0 * * *'  # Daily at midnight UTC
+    - cron: '0 * * * *'  # Run every hour at minute 0
 
 jobs:
   release:
@@ -48,4 +48,4 @@ jobs:
       run: |
         gh release create latest markets.parquet.encrypted embeddings.parquet.encrypted \
           --title "Latest Encrypted Markets" \
-          --notes "Auto-uploaded on $(date +'%Y-%m-%d')"
+          --notes "Auto-uploaded on $(date +'%Y-%m-%d %H:%M UTC')"

@@ -1,6 +1,6 @@
 [project]
 name = "mootlib"
-version = "0.1.0"
+dynamic = ["version"]
 description = "A library for scraping and analyzing forecasting markets"
 authors = [
     { name = "Luigi Petrucco", email = "luigi.petrucco@gmail.com" }
@@ -46,8 +46,11 @@ Documentation = "https://github.com/vigji/mootlib"
 "Bug Tracker" = "https://github.com/vigji/mootlib/issues"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
 
 [tool.hatch.build.targets.wheel]
 packages = ["mootlib"]
