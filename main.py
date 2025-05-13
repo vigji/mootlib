@@ -1,12 +1,12 @@
 import os
 from pathlib import Path
 
-import dotenv
 import pandas as pd
+from dotenv import load_dotenv
 
 from mootlib.utils.encription import encrypt_csv
 
-dotenv.load_dotenv()
+load_dotenv()
 
 # print all available environment variables
 print(os.environ)
