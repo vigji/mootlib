@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from zoneinfo import ZoneInfo
 
 import pandas as pd
 
@@ -94,15 +95,10 @@ def _create_markets_dataframe(markets: list[PooledMarket]) -> pd.DataFrame:
     Returns:
         DataFrame with all market data.
     """
-    # Convert to list of dicts, excluding raw_market_data
-    market_dicts = []
-    for market in markets:
-        market_dict = market.__dict__.copy()
-        market_dict.pop(
-            "raw_market_data",
-            None,
-        )  # Remove raw data to keep DataFrame clean
-        market_dicts.append(market_dict)
+    market_dicts = [
+        {k: v for k, v in market.__dict__.items() if k != "raw_market_data"}
+        for market in markets
+    ]
 
     all_markets_df = pd.DataFrame(market_dicts)
     all_markets_df = all_markets_df.drop_duplicates(subset=["question"])
@@ -110,17 +106,15 @@ def _create_markets_dataframe(markets: list[PooledMarket]) -> pd.DataFrame:
     # Handle published_at column if it exists
     if "published_at" in all_markets_df.columns:
         try:
-            # First convert all to datetime, handling timezone-aware and naive
+            # Convert to datetime, force timezone to ET if naive
             all_markets_df["published_at"] = pd.to_datetime(
-                all_markets_df["published_at"]
-            )
-
-            # Then convert all to timezone-naive
-            all_markets_df["published_at"] = all_markets_df["published_at"].apply(
-                lambda x: x.tz_localize(None) if x.tz is not None else x,
-            )
+                all_markets_df["published_at"],
+                utc=True,  # First convert everything to UTC
+                errors="coerce",  # Handle invalid dates gracefully
+            ).dt.tz_convert(ZoneInfo("America/New_York"))
 
             all_markets_df = all_markets_df.sort_values("published_at", ascending=False)
+
         except Exception as e:
             logger.warning(
                 "Failed to process published_at dates",
