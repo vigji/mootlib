@@ -222,6 +222,7 @@ class MootlibMatcher:
         query: str,
         n_results: int = 5,
         min_similarity: float = 0.5,
+        exclude_platforms: list[str] | None = None,
     ) -> list[SimilarQuestion]:
         r"""Find questions similar to the query across all prediction markets.
 
@@ -237,6 +238,8 @@ class MootlibMatcher:
             min_similarity: Minimum similarity score (0-1) for returned questions.
                 Higher values mean more similar results.
                 Defaults to 0.5.
+            exclude_platforms: List of platforms to exclude from the search.
+                Defaults to None.
 
         Returns:
             A list of SimilarQuestion objects, sorted by similarity
@@ -245,12 +248,16 @@ class MootlibMatcher:
         Example:
             >>> matcher = MootlibMatcher()
             >>> similar = matcher.find_similar_questions(
-            ...     "Will Tesla stock reach $300 in 2024?", n_results=3,
-            ...     min_similarity=0.7
+            ...     "Will Tesla stock reach $300 in 2024?",
+            ...     n_results=3,
+            ...     min_similarity=0.7,
+            ...     exclude_platforms=["Manifold"],
             ... )
             >>> for q in similar:
             ...     print(f"\\n{q}")
         """
+        if exclude_platforms is None:
+            exclude_platforms = []
         self._ensure_fresh_data()
         if not self._markets_df is not None:
             raise RuntimeError("Failed to load markets data")
@@ -267,7 +274,7 @@ class MootlibMatcher:
         # Get indices of top matches above minimum similarity
         valid_indices = np.where(similarities >= min_similarity)[0]
         top_indices = valid_indices[
-            np.argsort(-similarities[valid_indices])[:n_results]
+            np.argsort(-similarities[valid_indices])  # [:n_results]
         ]
 
         # Create SimilarQuestion objects for each match
@@ -275,6 +282,9 @@ class MootlibMatcher:
         for idx in top_indices:
             row = self._markets_df.iloc[idx]
             published_at = row.get("published_at")
+
+            if row["source_platform"] in exclude_platforms:
+                continue
 
             similar_questions.append(
                 SimilarQuestion(
@@ -289,6 +299,9 @@ class MootlibMatcher:
                 )
             )
 
+            if len(similar_questions) >= n_results:
+                break
+
         return similar_questions
 
 
@@ -296,6 +309,9 @@ if __name__ == "__main__":
     # Example usage
     matcher = MootlibMatcher()
     query = "Will Russia invade another country in 2024?"
-    similar = matcher.find_similar_questions(query, n_results=3)
+    similar = matcher.find_similar_questions(
+        query,
+        n_results=3,  # exclude_platforms=["Manifold"]
+    )
     for q in similar:
         print(f"\n{q}\n{'-' * 80}")

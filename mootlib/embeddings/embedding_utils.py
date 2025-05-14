@@ -7,7 +7,6 @@ import dotenv
 import numpy as np
 import pandas as pd
 from openai import OpenAI
-from sklearn.metrics.pairwise import cosine_similarity
 from tqdm import tqdm
 
 from mootlib.embeddings.remote_cache import get_remote_cache
@@ -70,6 +69,7 @@ class EmbeddingsCache:
         if self.cache_path.exists():
             self.cache_df = pd.read_parquet(self.cache_path)
         elif use_remote:
+            print(f"Fetching remote cache from {self.GITHUB_RELEASE_URL}")
             self.cache_df = get_remote_cache(self.GITHUB_RELEASE_URL)
             if self.cache_df is not None:
                 self.save_cache()
@@ -164,39 +164,6 @@ class EmbeddingsCache:
         texts = df[text_column].tolist()
         embeddings = self.get_embeddings(texts, update_cache=update_cache)
         return pd.DataFrame(embeddings, index=df.index)
-
-
-def get_distance_matrix(combined_df: pd.DataFrame) -> np.ndarray:
-    """Create a distance matrix of the embeddings."""
-    embeddings = combined_df.drop(
-        ["source_platform", "question", "formatted_outcomes"],
-        axis=1,
-    )
-    cosine_similarity_matrix = cosine_similarity(embeddings)
-    distance_matrix = 1 - cosine_similarity_matrix
-    np.fill_diagonal(distance_matrix, np.inf)
-    return distance_matrix
-
-
-def get_closest_questions(row, distance_matrix, df, n_closest=20):
-    """Get the closest questions from the distance matrix."""
-    question_index = row.name
-    distances = distance_matrix[question_index]
-
-    closest_indices = np.argsort(distances)[:n_closest]
-    closest_questions = df.iloc[closest_indices]
-
-    return [
-        (q, a, source, distance)
-        for q, a, source, distance in zip(
-            closest_questions["question"].tolist(),
-            closest_questions["formatted_outcomes"].tolist(),
-            closest_questions["source_platform"].tolist(),
-            distances[closest_indices],
-            strict=False,
-        )
-        if source != "Metaculus"
-    ][:n_closest]
 
 
 if __name__ == "__main__":
