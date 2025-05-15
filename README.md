@@ -1,6 +1,7 @@
 # Mootlib
 
-A Python library for finding similar questions across prediction markets.
+A Python library for finding similar questions across prediction markets. Similar to [metaforecast](https://metaforecast.org), but simpler, python-based, and with an updated list of sources.
+A lot could probably be replaced with proper querying the metaforecast database, but this is a quick and easy pure-python solution for now, with no third-parties between you and the market data.
 
 ## Features
 
@@ -10,6 +11,26 @@ A Python library for finding similar questions across prediction markets.
 - Automatic caching and data management
 - Direct access to market data and embeddings
 
+Currently, there is no fancy database behind the scenes, mootlib is just a Python library fetching some data from a github repo. The GH Actions workflow is used to fetch the data, compute embeddings, and release an artefact every hour or so; the code fetches the latest artefacts. We encrypt the artefacts using the key `MOOTLIB_ENCRYPTION_KEY` to keep your own parsing end embedding private. This means that you will need to set up your repo and your GH Actions workflow before using the library.
+
+## Set up your `mootlib`
+
+1. Fork the repo and install it
+2. Create the MOOTLIB_ENCRYPTION_KEY using the `Fernet.generate_key()` function from `cryptography.fernet` and save it (see below)
+3. Add the MOOTLIB_ENCRYPTION_KEY to the repo secrets
+4. Ensure the GH Actions workflow is enabled and has run
+5. Enjoy querying the data from `mootlib`
+
+
+## Future TODOs
+- [ ] Add a database?
+- [ ] Improve prediction quality metrics
+- [ ] More integrations:
+    - [ ] Kalshi
+    - [ ] https://www.randforecastinginitiative.org
+    - [ ] SMarkets
+
+
 ## Installation
 
 ```bash
@@ -18,15 +39,19 @@ pip install mootlib
 
 ## Environment Setup
 
+
 ### Required Environment Variables
+
+
 
 The library requires several environment variables to function:
 
-- `MOOTLIB_ENCRYPTION_KEY`: Required for decrypting market data
-- `DEEPINFRA_TOKEN`: Required for computing embeddings
-- `GJO_EMAIL` and `GJO_PASSWORD`: Optional, for Good Judgment Open access
+- `MOOTLIB_ENCRYPTION_KEY`: Required for decrypting market data. You have to create your own using the `Fernet.generate_key()` function from `cryptography.fernet`.
+- `DEEPINFRA_TOKEN`: Required for computing embeddings. You can get it by going to [https://deepinfra.com/](https://deepinfra.com/) and creating an account.
+- `GJO_EMAIL` and `GJO_PASSWORD`: Optional, for Good Judgment Open access. You can get it by going to [https://goodjudgment.io/](https://goodjudgment.io/) and creating an account.
 
-You can set these up in two ways:
+
+Once you have all your keys, you can set them up in two ways:
 
 #### 1. Using a .env file (recommended for local development)
 
