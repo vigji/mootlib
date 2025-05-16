@@ -1,17 +1,38 @@
 # Mootlib
 
-A Python library for finding similar questions across prediction markets. Similar to [metaforecast](https://metaforecast.org), but simpler, python-based, and with an updated list of sources.
-A lot could probably be replaced with proper querying the metaforecast database, but this is a quick and easy pure-python solution for now, with no third-parties between you and the market data.
+A lightweight Python library for semantic search across prediction markets. Think [metaforecast](https://metaforecast.org) but simpler and Python-native.
+
+## Key Features
+
+- Cross-platform forecast aggregation
+- Semantic search powered by `BAAI/bge-m3` embeddings
+- Automatic data caching and management
+- Direct market data access
+
+## How it Works
+
+Mootlib fetches encrypted market data and embeddings from GitHub artifacts, updated hourly via Actions. You'll need your own encryption key to access the data.
+
+## Quick Setup
+
+1. Fork and install the repo
+2. Generate your encryption key:
+   ```python
+   from cryptography.fernet import Fernet
+   key = Fernet.generate_key()
+   ```
+3. Add the key as `MOOTLIB_ENCRYPTION_KEY` in your repo secrets
+4. Enable and run the GitHub Actions workflow
+5. Start querying markets with `mootlib`
 
 ## Features
 
-- Search for similar questions across multiple prediction market platforms
-- Access historical market data and probabilities
-- Compare questions using semantic similarity
+- Pool forecasts across multiple prediction market platforms using 
+- semantic similarity search with `BAAI/bge-m3`-based embeddings
 - Automatic caching and data management
 - Direct access to market data and embeddings
 
-Currently, there is no fancy database behind the scenes, mootlib is just a Python library fetching some data from a github repo. The GH Actions workflow is used to fetch the data, compute embeddings, and release an artefact every hour or so; the code fetches the latest artefacts. We encrypt the artefacts using the key `MOOTLIB_ENCRYPTION_KEY` to keep your own parsing end embedding private. This means that you will need to set up your repo and your GH Actions workflow before using the library.
+No fancy database behind the scenes, mootlib is just a Python library fetching some data from a github repo. The GH Actions workflow is used to fetch the data, compute embeddings, and release an artefact every hour or so; the code fetches the latest artefacts. We encrypt the artefacts using the key `MOOTLIB_ENCRYPTION_KEY` to keep your own parsing end embedding private. This means that you will need to set up your repo and your GH Actions workflow before using the library.
 
 ## Set up your `mootlib`
 
@@ -25,6 +46,7 @@ Currently, there is no fancy database behind the scenes, mootlib is just a Pytho
 ## Future TODOs
 - [ ] Add a database?
 - [ ] Improve prediction quality metrics
+- [ ] Small LLM-based filter for question relevance
 - [ ] More integrations:
     - [ ] Kalshi
     - [ ] https://www.randforecastinginitiative.org
