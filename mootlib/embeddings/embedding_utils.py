@@ -10,6 +10,7 @@ from openai import OpenAI
 from tqdm import tqdm
 
 from mootlib.embeddings.remote_cache import get_remote_cache
+from mootlib.utils.config import get_release_file_url
 
 model = "BAAI/bge-m3"
 EMBEDDING_DIM = 1024  # BGE-M3 embedding dimension
@@ -32,8 +33,6 @@ def compute_string_hash(text: str) -> str:
 
 class EmbeddingsCache:
     """Cache for embeddings."""
-
-    GITHUB_RELEASE_URL = "https://github.com/vigji/mootlib/releases/download/latest/embeddings.parquet.encrypted"
 
     def __init__(
         self,
@@ -69,8 +68,9 @@ class EmbeddingsCache:
         if self.cache_path.exists():
             self.cache_df = pd.read_parquet(self.cache_path)
         elif use_remote:
-            print(f"Fetching remote cache from {self.GITHUB_RELEASE_URL}")
-            self.cache_df = get_remote_cache(self.GITHUB_RELEASE_URL)
+            release_url = get_release_file_url("embeddings.parquet.encrypted")
+            print(f"Fetching remote cache from {release_url}")
+            self.cache_df = get_remote_cache(release_url)
             if self.cache_df is not None:
                 self.save_cache()
 
@@ -170,6 +170,7 @@ if __name__ == "__main__":
     from pathlib import Path
     from time import time
 
+    from mootlib.utils.config import get_release_file_url
     from mootlib.utils.encryption import decrypt_to_df
 
     # Load encrypted data
