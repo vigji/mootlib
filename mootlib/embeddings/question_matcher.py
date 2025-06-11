@@ -36,6 +36,7 @@ import pandas as pd
 from sklearn.metrics.pairwise import cosine_similarity
 
 from mootlib.embeddings.embedding_utils import EmbeddingsCache
+from mootlib.utils.config import get_release_file_url
 from mootlib.utils.encryption import decrypt_to_df
 
 
@@ -116,7 +117,6 @@ class MootlibMatcher:
         for decrypting market data.
     """
 
-    GITHUB_RELEASE_URL = "https://github.com/vigji/mootlib/releases/download/latest/markets.parquet.encrypted"
     TEMP_DIR = Path(tempfile.gettempdir()) / "mootlib"
 
     def __init__(
@@ -186,11 +186,12 @@ class MootlibMatcher:
 
     def _download_markets_file(self) -> None:
         """Download the markets file from GitHub releases."""
+        release_url = get_release_file_url("markets.parquet.encrypted")
         print(
-            f"Downloading markets file from {self.GITHUB_RELEASE_URL} to"
+            f"Downloading markets file from {release_url} to"
             f" {self.markets_file}"
         )
-        urllib.request.urlretrieve(self.GITHUB_RELEASE_URL, self.markets_file)
+        urllib.request.urlretrieve(release_url, self.markets_file)
 
     def _is_cache_valid(self) -> bool:
         """Check if the cached file is still valid."""
