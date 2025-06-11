@@ -3,9 +3,10 @@
 import os
 import subprocess
 from pathlib import Path
-from typing import Optional, Final
+from typing import Final
 
 DEFAULT_GIT_REPO: Final[str] = "https://github.com/vigji/mootlib"
+
 
 def get_github_repo_url() -> str:
     """Get the GitHub repository URL from environment or auto-detection.
@@ -45,7 +46,7 @@ def get_github_repo_url() -> str:
     return DEFAULT_GIT_REPO
 
 
-def _get_git_remote_url() -> Optional[str]:
+def _get_git_remote_url() -> str | None:
     """Get the GitHub repository URL from git remote origin.
 
     Returns:
@@ -67,7 +68,9 @@ def _get_git_remote_url() -> Optional[str]:
         if "github.com" in remote_url:
             # Handle SSH format: git@github.com:user/repo.git
             if remote_url.startswith("git@github.com:"):
-                repo_path = remote_url.replace("git@github.com:", "").replace(".git", "")
+                repo_path = remote_url.replace("git@github.com:", "").replace(
+                    ".git", ""
+                )
                 return f"https://github.com/{repo_path}"
 
             # Handle HTTPS format: https://github.com/user/repo.git
